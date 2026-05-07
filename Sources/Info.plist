@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string></string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.887661968279-p89urg3pd0fividl5q1pe1d323kliio3</string>
+			</array>
+		</dict>
+	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>דוגסיטר צריכה גישה למצלמה כדי לצלם תמונות של החיות שלך</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>דוגסיטר צריכה גישה לגלריה כדי להוסיף תמונות של החיות שלך</string>
+</dict>
+</plist>

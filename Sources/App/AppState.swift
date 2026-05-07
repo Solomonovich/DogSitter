@@ -1,0 +1,321 @@
+import Foundation
+import SwiftUI
+import FirebaseAuth
+import FirebaseFirestore
+import CoreLocation
+import MapKit
+
+@MainActor
+class AppState: ObservableObject {
+    @Published var isAuthenticated: Bool = false
+    @Published var currentUserRole: UserRole = .none
+    @Published var currentUser: User? = nil
+    
+    // UI Notification Wrapper
+    @Published var activeError: String? = nil
+    @Published var isLoadingTarget: Bool = false
+    
+    // Remote Global Feed State
+    @Published var users: [User] = []
+    @Published var pets: [Pet] = []
+    @Published var posts: [Post] = []
+    @Published var reviews: [Review] = []
+    @Published var chats: [Chat] = []
+    @Published var myActivePosts: [Post] = []
+    
+    let db = Firestore.firestore()
+    
+    // Listener registrations
+    private var postsListener: ListenerRegistration?
+    private var chatsListener: ListenerRegistration?
+    private var myPostsListener: ListenerRegistration?
+    
+    init() {
+        // Tie into Auth System
+        _ = Auth.auth().addStateDidChangeListener { [weak self] _, user in
+            guard let self = self else { return }
+            Task { @MainActor in
+                self.isAuthenticated = (user != nil)
+                if let uid = user?.uid {
+                    await self.fetchCurrentProfile(uid: uid)
+                } else {
+                    self.resetState()
+                }
+            }
+        }
+    }
+    
+    deinit {
+        postsListener?.remove()
+        chatsListener?.remove()
+        myPostsListener?.remove()
+    }
+    
+    private func resetState() {
+        self.currentUserRole = .none
+        self.currentUser = nil
+        self.pets = []
+        self.posts = []
+        self.chats = []
+        self.reviews = []
+        self.myActivePosts = []
+        postsListener?.remove()
+        chatsListener?.remove()
+        myPostsListener?.remove()
+    }
+    
+    // MARK: - Core Profile & Booting
+    
+    func fetchCurrentProfile(uid: String) async {
+        do {
+            let document = try await db.collection("users").document(uid).getDocument()
+            
+            guard document.exists, let data = document.data(), let _ = data["role"] as? String else {
+                // FALLBACK: Auto-create document if missing
+                let authUser = Auth.auth().currentUser
+                let email = authUser?.email ?? ""
+                let name = authUser?.displayName ?? "משתמש חדש"
+                let username = "@" + (email.split(separator: "@").first.map(String.init) ?? "user")
+                
+                let newUser = User(
+                    id: uid,
+                    name: name,
+                    email: email,
+                    username: username,
+                    role: UserRole.needsRole.rawValue,
+                    createdAt: Timestamp()
+                )
+                
+                // Save it synchronously without throwing error in a way that blocks UI if it fails
+                do {
+                    try db.collection("users").document(uid).setData(from: newUser)
+                    self.currentUser = newUser
+                    self.currentUserRole = .needsRole
+                } catch {
+                    self.activeError = "שגיאה ביצירת הפרופיל הראשוני."
+                    self.currentUserRole = .none
+                }
+                return
+            }
+            
+            let decodedUser = try document.data(as: User.self)
+            self.currentUser = decodedUser
+            
+            if decodedUser.userRole == .none {
+                self.currentUserRole = .needsRole
+            } else {
+                self.currentUserRole = decodedUser.userRole
+            }
+            
+            // Once profile is validated, pull downstream elements (pets, feed, chats)
+            if self.currentUserRole == .owner {
+                await fetchPets(for: uid)
+                setupMyActivePostsListener(uid: uid)
+            }
+            setupChatsListener(uid: uid)
+            setupPostsListener()
+            
+        } catch {
+            self.activeError = "שגיאה בטעינת הרשת. מציג נתונים שמורים."
+            self.currentUserRole = .none
+        }
+    }
+    
+    // MARK: - Pets API
+    
+    func fetchPets(for uid: String) async {
+        do {
+            let snap = try await db.collection("pets").whereField("ownerId", isEqualTo: uid).getDocuments()
+            self.pets = snap.documents.compactMap { try? $0.data(as: Pet.self) }
+        } catch {
+            self.activeError = "חלה שגיאה בטעינת בעלי החיים."
+        }
+    }
+    
+    // MARK: - Posts Live Synchronizer
+    
+    func setupPostsListener() {
+        postsListener?.remove()
+        
+        // Listen to all Open posts, feed builds in memory natively
+        let query = db.collection("posts")
+            .whereField("status", isEqualTo: PostStatus.open.rawValue)
+            .order(by: "createdAt", descending: true)
+        
+        postsListener = query.addSnapshotListener { [weak self] snapshot, error in
+            guard let self = self else { return }
+            
+            if error != nil {
+                self.activeError = "שגיאה בטעינת פוסטים בזמן אמת."
+                return
+            }
+            
+            guard let documents = snapshot?.documents else { return }
+            var updatedPosts = documents.compactMap { try? $0.data(as: Post.self) }
+            
+            // App-level secondary sort algorithm: deprioritize posts with higher interestedCount natively.
+            // Using stability sort logic since Firestore cannot combine inequality limits arbitrarily across unknown index maps
+            updatedPosts.sort { (p1, p2) -> Bool in
+                if p1.interestedCount != p2.interestedCount {
+                    return p1.interestedCount < p2.interestedCount
+                }
+                
+                let t1 = p1.createdAt?.dateValue() ?? Date.distantPast
+                let t2 = p2.createdAt?.dateValue() ?? Date.distantPast
+                return t1 > t2
+            }
+            
+            self.posts = updatedPosts
+        }
+    }
+    
+    func setupMyActivePostsListener(uid: String) {
+        myPostsListener?.remove()
+        
+        let query = db.collection("posts")
+            .whereField("ownerId", isEqualTo: uid)
+            .whereField("status", isEqualTo: PostStatus.open.rawValue)
+            .order(by: "createdAt", descending: true)
+        
+        myPostsListener = query.addSnapshotListener { [weak self] snapshot, error in
+            guard let self = self else { return }
+            
+            if let err = error {
+                print("Error loading my active posts: \(err.localizedDescription)")
+                return
+            }
+            
+            guard let documents = snapshot?.documents else { 
+                print("No snapshot documents found for my active posts")
+                return 
+            }
+            print("myActivePosts listener fetched \(documents.count) posts.")
+            self.myActivePosts = documents.compactMap { try? $0.data(as: Post.self) }
+        }
+    }
+    
+    // MARK: - Chats Live Synchronizer
+    
+    func setupChatsListener(uid: String) {
+        chatsListener?.remove()
+        
+        let roleFilterField = (self.currentUserRole == .sitter) ? "sitterId" : "ownerId"
+        
+        chatsListener = db.collection("chats")
+            .whereField(roleFilterField, isEqualTo: uid)
+            .whereField("archived", isEqualTo: false)
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let self = self else { return }
+                
+                if let error = error {
+                    print("Error loading chats: \(error.localizedDescription)")
+                    return
+                }
+                
+                guard let documents = snapshot?.documents else { return }
+                self.chats = documents.compactMap { try? $0.data(as: Chat.self) }.sorted {
+                    ($0.lastMessageTime?.dateValue() ?? Date.distantPast) > ($1.lastMessageTime?.dateValue() ?? Date.distantPast)
+                }
+            }
+    }
+    
+    // MARK: - Pets Write Operations
+    func savePet(_ pet: Pet) async throws {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        var petToSave = pet
+        petToSave.ownerId = uid
+        
+        // If it lacks an ID, Firestore will generate one by saving locally.
+        let collection = db.collection("pets")
+        if let id = petToSave.id {
+            try collection.document(id).setData(from: petToSave)
+        } else {
+            let _ = try collection.addDocument(from: petToSave)
+        }
+        
+        // Re-fetch pets dynamically
+        await fetchPets(for: uid)
+    }
+    
+    // MARK: - Post Pet Fetching
+    
+    func fetchPets(for petIds: [String]) async -> [Pet] {
+        guard !petIds.isEmpty else { return [] }
+        var fetched: [Pet] = []
+        let db = Firestore.firestore()
+        
+        // Firestore 'in' queries support max 10 elements
+        for chunk in stride(from: 0, to: petIds.count, by: 10) {
+            let endIndex = min(chunk + 10, petIds.count)
+            let slice = Array(petIds[chunk..<endIndex])
+            do {
+                let snap = try await db.collection("pets").whereField(FieldPath.documentID(), in: slice).getDocuments()
+                let chunkPets = snap.documents.compactMap { try? $0.data(as: Pet.self) }
+                fetched.append(contentsOf: chunkPets)
+            } catch {
+                print("Error fetching pets chunk: \(error)")
+            }
+        }
+        return fetched
+    }
+    
+    // MARK: - Posts Create Operations
+    func createPost(_ post: Post) async throws {
+        let newRef = db.collection("posts").document()
+        var postToSave = post
+        postToSave.id = newRef.documentID // Explicitly set ID
+        
+        let encodedData = try Firestore.Encoder().encode(postToSave)
+        try await newRef.setData(encodedData, merge: true)
+    }
+    
+    func updatePost(_ post: Post) async throws {
+        guard let id = post.id else { return }
+        let encodedData = try Firestore.Encoder().encode(post)
+        try await db.collection("posts").document(id).setData(encodedData, merge: true)
+    }
+    
+    func deletePost(_ postId: String) async throws {
+        try await db.collection("posts").document(postId).delete()
+    }
+    
+    func expressInterest(in post: Post) async throws {
+        guard let postId = post.id, let user = currentUser, let uid = user.id else { return }
+        let interester = PostInterestedSitter(sitterId: uid, sitterName: user.name, sitterPhotoURL: user.photoURL)
+        
+        // Add subcollection doc
+        try db.collection("posts").document(postId).collection("interested").document(uid).setData(from: interester)
+        // Increment global interestedCount
+        try await db.collection("posts").document(postId).updateData([
+            "interestedCount": FieldValue.increment(Int64(1))
+        ])
+        
+        // Extract city from address
+        var city: String? = nil
+        if let address = user.address, !address.isEmpty {
+            let geocoder = CLGeocoder()
+            do {
+                let placemarks = try await geocoder.geocodeAddressString(address)
+                if let locality = placemarks.first?.locality {
+                    city = locality
+                }
+            } catch {
+                print("Geocoding failed for city extraction: \(error)")
+            }
+        }
+        
+        // Automatically create a chat channel
+        let chatRef = db.collection("chats").document()
+        var chat = Chat(postId: postId, ownerId: post.ownerId, sitterId: uid, ownerName: post.ownerName, sitterName: user.name, sitterCity: city, ownerPhotoURL: post.ownerPhotoURL, sitterPhotoURL: user.photoURL, approved: false, archived: false)
+        chat.id = chatRef.documentID
+        try chatRef.setData(from: chat)
+        
+        // Initial interest message
+        let initialMsg = ChatMessage(senderId: uid, senderName: user.name, sitterCity: city, text: "מעוניין לטפל בכלב שלך", type: MessageType.text.rawValue)
+        let _ = try chatRef.collection("messages").addDocument(from: initialMsg)
+        try await chatRef.updateData([
+            "lastMessage": "מעוניין לטפל בכלב שלך",
+            "lastMessageTime": FieldValue.serverTimestamp()
+        ])
+    }
+}
