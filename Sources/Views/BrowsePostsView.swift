@@ -11,24 +11,17 @@ struct BrowsePostsView: View {
     @State private var selectedSittingType: String = "הכל"
     @State private var selectedPetCount: String = "הכל"
     
-    @State private var currentHeight: CGFloat = UIScreen.main.bounds.height * 0.6
+    let collapsedHeight: CGFloat = UIScreen.main.bounds.height * 0.33
+    let expandedHeight: CGFloat = UIScreen.main.bounds.height * 0.67
+    let fullHeight: CGFloat = UIScreen.main.bounds.height - 100
+    
+    @State private var isShowingPostDetail: Bool = false
+    @State private var sheetHeight: CGFloat = UIScreen.main.bounds.height * 0.33
+    @State private var previousSheetHeight: CGFloat = UIScreen.main.bounds.height * 0.33
+    @State private var detailDragOffset: CGFloat = 0
     
     @State private var selectedPostIndex: Int = 0
     @State private var mapCenter: CLLocationCoordinate2D?
-    
-    let minHeight: CGFloat = 220
-    let midHeight: CGFloat = UIScreen.main.bounds.height * 0.6
-    let maxHeight: CGFloat = UIScreen.main.bounds.height - 120
-    
-    var sheetPosition: SheetPosition {
-        if currentHeight <= minHeight + 50 { return .collapsed }
-        if currentHeight >= maxHeight - 50 { return .full }
-        return .half
-    }
-    
-    enum SheetPosition {
-        case collapsed, half, full
-    }
     
     var sortedPosts: [Post] {
         var posts = appState.posts
@@ -86,98 +79,124 @@ struct BrowsePostsView: View {
                 selectedAnnotationID: selectedPost?.id,
                 onAnnotationTapped: { ann in
                     if let id = ann.subtitle, let post = sortedPosts.first(where: { $0.id == id }) {
-                        selectedPost = post
+                        openPost(post)
                     }
                 },
                 onMapTapped: {
-                    withAnimation(.spring()) {
-                        currentHeight = minHeight
+                    if !isShowingPostDetail {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                            sheetHeight = collapsedHeight
+                        }
                     }
                 }
             )
                 .ignoresSafeArea()
             
-            FilterBarView(selectedSittingType: $selectedSittingType, selectedPetCount: $selectedPetCount)
-                .padding(.top, 50)
+            if !isShowingPostDetail {
+                FilterBarView(selectedSittingType: $selectedSittingType, selectedPetCount: $selectedPetCount)
+                    .padding(.top, 50)
+            }
             
             VStack(spacing: 0) {
-                Capsule()
-                    .fill(Color.gray.opacity(0.5))
-                    .frame(width: 40, height: 5)
-                    .padding(.vertical, 10)
+                Spacer()
                 
-                if currentHeight <= minHeight + 50 {
-                    if !sortedPosts.isEmpty {
-                        TabView(selection: $selectedPostIndex) {
-                            ForEach(Array(sortedPosts.enumerated()), id: \.element.id) { index, post in
-                                PostCardBanner(post: post)
-                                    .padding(.horizontal)
-                                    .tag(index)
-                                    .onTapGesture {
-                                        selectedPost = post
+                VStack(spacing: 0) {
+                    if !isShowingPostDetail {
+                        Capsule()
+                            .fill(Color.gray.opacity(0.5))
+                            .frame(width: 40, height: 5)
+                            .padding(.top, 8)
+                            .padding(.bottom, 10)
+                            .gesture(
+                                DragGesture()
+                                    .onChanged { value in
+                                        sheetHeight = max(collapsedHeight, min(expandedHeight, sheetHeight - value.translation.height))
                                     }
+                                    .onEnded { value in
+                                        let velocity = -value.velocity.height
+                                        let midpoint = (collapsedHeight + expandedHeight) / 2
+                                        
+                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                            if velocity > 300 || sheetHeight > midpoint {
+                                                sheetHeight = expandedHeight
+                                            } else if velocity < -300 || sheetHeight < midpoint {
+                                                sheetHeight = collapsedHeight
+                                            } else {
+                                                if sheetHeight > midpoint {
+                                                    sheetHeight = expandedHeight
+                                                } else {
+                                                    sheetHeight = collapsedHeight
+                                                }
+                                            }
+                                        }
+                                    }
+                            )
+                        
+                        if sheetHeight <= collapsedHeight + 50 {
+                            if !sortedPosts.isEmpty {
+                                TabView(selection: $selectedPostIndex) {
+                                    ForEach(Array(sortedPosts.enumerated()), id: \.element.id) { index, post in
+                                        PostCardBanner(post: post)
+                                            .padding(.horizontal)
+                                            .tag(index)
+                                            .onTapGesture {
+                                                openPost(post)
+                                            }
+                                    }
+                                }
+                                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+                            } else {
+                                Text("אין פוסטים שמתאימים לסינון")
+                                    .foregroundColor(.gray)
+                                    .padding()
+                            }
+                        } else {
+                            ScrollView {
+                                LazyVStack(spacing: 16) {
+                                    ForEach(sortedPosts) { post in
+                                        PostCardBanner(post: post)
+                                            .padding(.horizontal)
+                                            .onTapGesture {
+                                                openPost(post)
+                                            }
+                                    }
+                                }
+                                .padding(.bottom, 20)
                             }
                         }
-                        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-                    } else {
-                        Text("אין פוסטים שמתאימים לסינון")
-                            .foregroundColor(.gray)
-                            .padding()
-                    }
-                } else {
-                    ScrollView {
-                        LazyVStack(spacing: 16) {
-                            ForEach(sortedPosts) { post in
-                                PostCardBanner(post: post)
-                                    .padding(.horizontal)
-                                    .onTapGesture {
-                                        selectedPost = post
+                    } else if let post = selectedPost {
+                        PostDetailSheetView(post: post, onClose: {
+                            closePost()
+                        })
+                        .gesture(
+                            DragGesture()
+                                .onChanged { value in
+                                    if value.translation.height > 0 {
+                                        detailDragOffset = value.translation.height
                                     }
-                            }
-                        }
-                        .padding(.bottom, 20)
+                                }
+                                .onEnded { value in
+                                    let velocity = value.velocity.height
+                                    if detailDragOffset > 100 || velocity > 300 {
+                                        detailDragOffset = 0
+                                        closePost()
+                                    } else {
+                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                            detailDragOffset = 0
+                                        }
+                                    }
+                                }
+                        )
                     }
                 }
-                Spacer()
+                .frame(height: sheetHeight)
+                .frame(maxWidth: .infinity)
+                .background(Color.white)
+                .cornerRadius(20, corners: [.topLeft, .topRight])
+                .shadow(color: .black.opacity(0.15), radius: 10, y: -5)
+                .clipped()
+                .offset(y: isShowingPostDetail ? max(0, detailDragOffset) : 0)
             }
-            .frame(height: currentHeight)
-            .frame(maxWidth: .infinity)
-            .background(Color(.systemBackground))
-            .cornerRadius(24, corners: [.topLeft, .topRight])
-            .shadow(radius: 10)
-            .offset(y: UIScreen.main.bounds.height - currentHeight)
-            .gesture(
-                DragGesture()
-                    .onChanged { value in
-                        let newHeight = currentHeight - value.translation.height
-                        if newHeight > 100 && newHeight < UIScreen.main.bounds.height {
-                            currentHeight = newHeight
-                        }
-                    }
-                    .onEnded { value in
-                        let velocity = -value.velocity.height
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                            if velocity > 500 {
-                                currentHeight = maxHeight
-                            } else if velocity < -500 {
-                                currentHeight = minHeight
-                            } else {
-                                if currentHeight > midHeight + 100 {
-                                    currentHeight = maxHeight
-                                } else if currentHeight < midHeight - 100 {
-                                    currentHeight = minHeight
-                                } else {
-                                    currentHeight = midHeight
-                                }
-                            }
-                        }
-                    }
-            )
-        }
-        .fullScreenCover(item: $selectedPost) { post in
-            PostDetailSheetView(post: post, onClose: {
-                selectedPost = nil
-            })
         }
         .onAppear {
             if !hasGeocoded {
@@ -191,6 +210,33 @@ struct BrowsePostsView: View {
                         }
                     }
                 }
+            }
+        }
+    }
+    
+    func openPost(_ post: Post) {
+        previousSheetHeight = sheetHeight
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            sheetHeight = 0
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            isShowingPostDetail = true
+            selectedPost = post
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                sheetHeight = expandedHeight
+            }
+        }
+    }
+    
+    func closePost() {
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            sheetHeight = 0
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            isShowingPostDetail = false
+            selectedPost = nil
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                sheetHeight = previousSheetHeight
             }
         }
     }
