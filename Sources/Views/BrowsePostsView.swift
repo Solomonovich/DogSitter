@@ -313,37 +313,34 @@ struct PostCardBanner: View {
         VStack(spacing: 10) {
             // TOP ROW
             HStack(alignment: .top) {
-                // LEFT SIDE - Icons
-                VStack(alignment: .leading) {
-                    HStack {
-                        Button(action: toggleSave) {
-                            Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
-                                .font(.system(size: 22))
-                                .foregroundColor(Color(white: 0.2))
-                        }
-                        
-                        ShareLink(item: "בדוק את המודעה הזו ב-דוגסיטר!\nמאת \(post.ownerName)\nב-\(post.address)") {
-                            Image(systemName: "square.and.arrow.up")
-                                .font(.system(size: 22))
-                                .foregroundColor(Color(white: 0.2))
-                        }
-                        
-                        if isDetail {
-                            Button(action: { onClose?() }) {
-                                Circle()
-                                    .fill(Color(white: 0.9))
-                                    .frame(width: 30, height: 30)
-                                    .overlay(Image(systemName: "xmark").foregroundColor(Color(white: 0.3)).font(.system(size: 14, weight: .bold)))
-                            }
+                // LEFT - icons
+                HStack(spacing: 12) {
+                    Button(action: toggleSave) {
+                        Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
+                            .font(.system(size: 22))
+                            .foregroundColor(Color(white: 0.2))
+                    }
+                    
+                    ShareLink(item: "בדוק את המודעה הזו ב-דוגסיטר!\nמאת \(post.ownerName)\nב-\(post.address)") {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 22))
+                            .foregroundColor(Color(white: 0.2))
+                    }
+                    
+                    if isDetail {
+                        Button(action: { onClose?() }) {
+                            Circle()
+                                .fill(Color(white: 0.9))
+                                .frame(width: 30, height: 30)
+                                .overlay(Image(systemName: "xmark").foregroundColor(Color(white: 0.3)).font(.system(size: 14, weight: .bold)))
                         }
                     }
                 }
                 
                 Spacer()
                 
-                // RIGHT SIDE - Name + Photo
+                // RIGHT - name then photo
                 HStack(alignment: .top, spacing: 8) {
-                    // Name stack to the LEFT of the photo
                     VStack(alignment: .trailing, spacing: 2) {
                         let nameParts = post.ownerName.components(separatedBy: " ")
                         let firstName = nameParts.first ?? ""
@@ -364,25 +361,21 @@ struct PostCardBanner: View {
                         }
                     }
                     
-                    // Photo on the FAR RIGHT
-                    Group {
-                        if let photo = post.ownerPhotoURL, photo.hasPrefix("http") {
-                            AsyncImage(url: URL(string: photo)) { phase in
-                                if let img = phase.image {
-                                    img.resizable().scaledToFill()
-                                } else if phase.error != nil {
-                                    Image(systemName: "person.fill").foregroundColor(.gray)
-                                } else {
-                                    ProgressView()
-                                }
-                            }
-                        } else {
-                            Image(systemName: "person.fill").foregroundColor(.gray)
+                    if let photo = post.ownerPhotoURL, photo.hasPrefix("http") {
+                        AsyncImage(url: URL(string: photo)) { image in
+                            image.resizable()
+                                .aspectRatio(contentMode: .fill)
+                        } placeholder: {
+                            Circle().fill(Color.gray.opacity(0.3))
+                                .overlay(Image(systemName: "person.fill").foregroundColor(.gray))
                         }
+                        .frame(width: 52, height: 52)
+                        .clipShape(Circle())
+                    } else {
+                        Circle().fill(Color.gray.opacity(0.3))
+                            .overlay(Image(systemName: "person.fill").foregroundColor(.gray))
+                            .frame(width: 52, height: 52)
                     }
-                    .frame(width: 52, height: 52)
-                    .background(Color.gray.opacity(0.2))
-                    .clipShape(Circle())
                 }
             }
             
@@ -446,6 +439,7 @@ struct PostCardBanner: View {
         .background(isDetail ? Color.white : Color(red: 242/255, green: 242/255, blue: 247/255))
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
+        .environment(\.layoutDirection, .leftToRight)
     }
 }
 
