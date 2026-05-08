@@ -11,13 +11,13 @@ struct BrowsePostsView: View {
     @State private var selectedSittingType: String = "הכל"
     @State private var selectedPetCount: String = "הכל"
     
-    let collapsedHeight: CGFloat = UIScreen.main.bounds.height * 0.33
+    let collapsedHeight: CGFloat = 360
     let expandedHeight: CGFloat = UIScreen.main.bounds.height * 0.67
     let fullHeight: CGFloat = UIScreen.main.bounds.height - 100
     
     @State private var isShowingPostDetail: Bool = false
-    @State private var sheetHeight: CGFloat = UIScreen.main.bounds.height * 0.33
-    @State private var previousSheetHeight: CGFloat = UIScreen.main.bounds.height * 0.33
+    @State private var sheetHeight: CGFloat = 360
+    @State private var previousSheetHeight: CGFloat = 360
     @State private var detailDragOffset: CGFloat = 0
     
     @State private var selectedPostIndex: Int = 0
@@ -136,12 +136,16 @@ struct BrowsePostsView: View {
                             if !sortedPosts.isEmpty {
                                 TabView(selection: $selectedPostIndex) {
                                     ForEach(Array(sortedPosts.enumerated()), id: \.element.id) { index, post in
-                                        PostCardBanner(post: post)
-                                            .padding(.horizontal)
-                                            .tag(index)
-                                            .onTapGesture {
-                                                openPost(post)
-                                            }
+                                        VStack(spacing: 0) {
+                                            PostCardBanner(post: post)
+                                                .padding(.horizontal)
+                                                .onTapGesture {
+                                                    openPost(post)
+                                                }
+                                            Spacer()
+                                        }
+                                        .padding(.bottom, 83)
+                                        .tag(index)
                                     }
                                 }
                                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
@@ -161,7 +165,7 @@ struct BrowsePostsView: View {
                                             }
                                     }
                                 }
-                                .padding(.bottom, 20)
+                                .padding(.bottom, 83)
                             }
                         }
                     } else if let post = selectedPost {
@@ -194,9 +198,9 @@ struct BrowsePostsView: View {
                 .background(Color.white)
                 .cornerRadius(20, corners: [.topLeft, .topRight])
                 .shadow(color: .black.opacity(0.15), radius: 10, y: -5)
-                .clipped()
                 .offset(y: isShowingPostDetail ? max(0, detailDragOffset) : 0)
             }
+            .ignoresSafeArea(.all, edges: .bottom)
         }
         .onAppear {
             if !hasGeocoded {
