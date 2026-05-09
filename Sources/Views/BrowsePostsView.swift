@@ -11,13 +11,13 @@ struct BrowsePostsView: View {
     @State private var selectedSittingType: String = "הכל"
     @State private var selectedPetCount: String = "הכל"
     
-    let collapsedHeight: CGFloat = 360
+    let collapsedHeight: CGFloat = 400
     let expandedHeight: CGFloat = UIScreen.main.bounds.height * 0.67
     let fullHeight: CGFloat = UIScreen.main.bounds.height - 100
     
     @State private var isShowingPostDetail: Bool = false
-    @State private var sheetHeight: CGFloat = 360
-    @State private var previousSheetHeight: CGFloat = 360
+    @State private var sheetHeight: CGFloat = 400
+    @State private var previousSheetHeight: CGFloat = 400
     @State private var detailDragOffset: CGFloat = 0
     
     @State private var selectedPostIndex: Int = 0
@@ -136,16 +136,14 @@ struct BrowsePostsView: View {
                             if !sortedPosts.isEmpty {
                                 TabView(selection: $selectedPostIndex) {
                                     ForEach(Array(sortedPosts.enumerated()), id: \.element.id) { index, post in
-                                        VStack(spacing: 0) {
-                                            PostCardBanner(post: post)
-                                                .padding(.horizontal)
-                                                .onTapGesture {
-                                                    openPost(post)
-                                                }
-                                            Spacer()
-                                        }
-                                        .padding(.bottom, 83)
-                                        .tag(index)
+                                        PostCardBanner(post: post)
+                                            .padding(.horizontal, 16)
+                                            .padding(.top, 8)
+                                            .padding(.bottom, 16)
+                                            .onTapGesture {
+                                                openPost(post)
+                                            }
+                                            .tag(index)
                                     }
                                 }
                                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
