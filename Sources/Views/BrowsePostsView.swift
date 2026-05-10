@@ -12,7 +12,7 @@ struct BrowsePostsView: View {
     @State private var selectedPetCount: String = "הכל"
     
     let collapsedHeight: CGFloat = 400
-    let expandedHeight: CGFloat = (UIScreen.main.bounds.height - 83) * 0.67
+    let expandedHeight: CGFloat = (UIScreen.main.bounds.height - 83) * 0.8
     let fullHeight: CGFloat = UIScreen.main.bounds.height - 100
     
     @State private var isShowingPostDetail: Bool = false
