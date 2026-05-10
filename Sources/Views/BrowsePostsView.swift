@@ -12,13 +12,14 @@ struct BrowsePostsView: View {
     @State private var selectedPetCount: String = "הכל"
     
     let collapsedHeight: CGFloat = 400
-    let expandedHeight: CGFloat = UIScreen.main.bounds.height * 0.67
+    let expandedHeight: CGFloat = (UIScreen.main.bounds.height - 83) * 0.67
     let fullHeight: CGFloat = UIScreen.main.bounds.height - 100
     
     @State private var isShowingPostDetail: Bool = false
     @State private var sheetHeight: CGFloat = 400
     @State private var previousSheetHeight: CGFloat = 400
     @State private var detailDragOffset: CGFloat = 0
+    @State private var dragStartHeight: CGFloat = 400
     
     @State private var selectedPostIndex: Int = 0
     @State private var mapCenter: CLLocationCoordinate2D?
@@ -102,35 +103,41 @@ struct BrowsePostsView: View {
                 
                 VStack(spacing: 0) {
                     if !isShowingPostDetail {
-                        Capsule()
-                            .fill(Color.gray.opacity(0.5))
-                            .frame(width: 40, height: 5)
-                            .padding(.top, 8)
-                            .padding(.bottom, 10)
-                            .gesture(
-                                DragGesture()
-                                    .onChanged { value in
-                                        sheetHeight = max(collapsedHeight, min(expandedHeight, sheetHeight - value.translation.height))
-                                    }
-                                    .onEnded { value in
-                                        let velocity = -value.velocity.height
-                                        let midpoint = (collapsedHeight + expandedHeight) / 2
-                                        
-                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                                            if velocity > 300 || sheetHeight > midpoint {
+                        VStack {
+                            Capsule()
+                                .fill(Color.gray.opacity(0.5))
+                                .frame(width: 40, height: 5)
+                                .padding(.top, 8)
+                                .padding(.bottom, 10)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .contentShape(Rectangle())
+                        .gesture(
+                            DragGesture(coordinateSpace: .global)
+                                .onChanged { value in
+                                    if dragStartHeight == 0 { dragStartHeight = sheetHeight }
+                                    sheetHeight = max(collapsedHeight, min(expandedHeight, dragStartHeight - value.translation.height))
+                                }
+                                .onEnded { value in
+                                    dragStartHeight = 0
+                                    let velocity = -value.velocity.height
+                                    let midpoint = (collapsedHeight + expandedHeight) / 2
+                                    
+                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                        if velocity > 300 || sheetHeight > midpoint {
+                                            sheetHeight = expandedHeight
+                                        } else if velocity < -300 || sheetHeight < midpoint {
+                                            sheetHeight = collapsedHeight
+                                        } else {
+                                            if sheetHeight > midpoint {
                                                 sheetHeight = expandedHeight
-                                            } else if velocity < -300 || sheetHeight < midpoint {
-                                                sheetHeight = collapsedHeight
                                             } else {
-                                                if sheetHeight > midpoint {
-                                                    sheetHeight = expandedHeight
-                                                } else {
-                                                    sheetHeight = collapsedHeight
-                                                }
+                                                sheetHeight = collapsedHeight
                                             }
                                         }
                                     }
-                            )
+                                }
+                        )
                         
                         if sheetHeight <= collapsedHeight + 50 {
                             if !sortedPosts.isEmpty {
@@ -171,7 +178,7 @@ struct BrowsePostsView: View {
                             closePost()
                         })
                         .gesture(
-                            DragGesture()
+                            DragGesture(coordinateSpace: .global)
                                 .onChanged { value in
                                     if value.translation.height > 0 {
                                         detailDragOffset = value.translation.height
@@ -682,7 +689,7 @@ struct PostDetailSheetView: View {
                 .background(Color(red: 74/255, green: 144/255, blue: 217/255))
                 .cornerRadius(14)
                 .padding(.horizontal, 16)
-                .padding(.bottom, geometry.safeAreaInsets.bottom + 16)
+                .padding(.bottom, geometry.safeAreaInsets.bottom + 83 + 16)
                 .padding(.top, 16)
                 .background(Color(white: 0.96))
             }

@@ -1,69 +1,20 @@
-import FirebaseFirestore
-import SwiftUI
-import FirebaseAuth
-import GoogleSignIn
+import os
 
-struct ProfileView: View {
-    @EnvironmentObject var appState: AppState
-    
-    var body: some View {
-        NavigationView {
-            Form {
-                if let user = appState.currentUser {
-                    Section(header: Text("פרטים אישיים")) {
-                        HStack {
-                            Text("שם מלא")
-                            Spacer()
-                            Text(user.name).foregroundColor(.secondary)
-                        }
-                        HStack {
-                            Text("שם משתמש")
-                            Spacer()
-                            Text(user.username).foregroundColor(.secondary)
-                        }
-                        HStack {
-                            Text("כתובת")
-                            Spacer()
-                            Text(user.address ?? "").foregroundColor(.secondary)
-                        }
-                        HStack {
-                            Text("טלפון")
-                            Spacer()
-                            Text(user.phone ?? "").foregroundColor(.secondary)
-                        }
-                    }
-                }
-                
-                Section {
-                    NavigationLink(destination: EditProfileView()) {
-                        Text("ערוך פרופיל")
-                            .foregroundColor(.blue)
-                    }
-                }
-                
-                Section {
-                    Button(action: {
-                        do {
-                            GIDSignIn.sharedInstance.signOut()
-                            try Auth.auth().signOut()
-                        } catch {
-                            print("Error signing out: \(error)")
-                        }
-                    }) {
-                        Text("התנתק")
-                            .foregroundColor(.red)
-                    }
-                }
-            }
-            .navigationTitle("הפרופיל שלי")
-        }
-    }
-}
+file_path = "/Users/solofamily/Desktop/Walker/DogSitter/Sources/Views/SitterProfileView.swift"
 
+with open(file_path, "r") as f:
+    content = f.read()
+
+# Add imports
+if "import FirebaseFirestore" not in content:
+    content = "import FirebaseFirestore\nimport FirebaseFirestoreSwift\n" + content
+
+# Add the struct
+struct_code = """
 
 struct EditProfileView: View {
     @EnvironmentObject var appState: AppState
-    @Environment(\.presentationMode) var presentationMode
+    @Environment(\\.presentationMode) var presentationMode
     
     @State private var name: String = ""
     @State private var username: String = ""
@@ -109,7 +60,7 @@ struct EditProfileView: View {
             .listRowBackground(Color.clear)
             .padding(.top, 16)
         }
-        .environment(\.layoutDirection, .rightToLeft)
+        .environment(\\.layoutDirection, .rightToLeft)
         .navigationTitle("ערוך פרופיל")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -146,10 +97,22 @@ struct EditProfileView: View {
                 }
             } catch {
                 await MainActor.run {
-                    errorMessage = "שגיאה בשמירת הפרופיל: \(error.localizedDescription)"
+                    errorMessage = "שגיאה בשמירת הפרופיל: \\(error.localizedDescription)"
                     isSaving = false
                 }
             }
         }
     }
 }
+"""
+content += struct_code
+
+with open(file_path, "w") as f:
+    f.write(content)
+
+# delete the extra file
+extra_file = "/Users/solofamily/Desktop/Walker/DogSitter/Sources/Views/EditProfileView.swift"
+if os.path.exists(extra_file):
+    os.remove(extra_file)
+
+print("Fixed scope error")

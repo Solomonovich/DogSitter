@@ -28,6 +28,17 @@ struct OwnerProfileView: View {
                                 .foregroundColor(.secondary)
                             Text(user.address ?? "")
                                 .font(.subheadline)
+                                
+                            NavigationLink(destination: EditProfileView()) {
+                                Text("ערוך פרופיל")
+                                    .font(.subheadline)
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 8)
+                                    .background(Color.blue)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(20)
+                            }
+                            .padding(.top, 4)
                         }
                         .padding(.top)
                         
