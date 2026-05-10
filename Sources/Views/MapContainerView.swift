@@ -47,14 +47,16 @@ struct MapContainerView: UIViewRepresentable {
         }
         
         func updateAnnotationView(_ view: MKAnnotationView, for annotation: MKPointAnnotation, isSelected: Bool) {
-            let size: CGFloat = isSelected ? 48 : 36
-            let bgColor = isSelected ? UIColor(red: 40/255, green: 100/255, blue: 200/255, alpha: 1.0) : .white
+            let size: CGFloat = isSelected ? 44 : 36
+            let bgColor = isSelected ? UIColor(red: 74/255, green: 144/255, blue: 217/255, alpha: 1.0) : .white
             let iconColor = isSelected ? .white : UIColor(red: 74/255, green: 144/255, blue: 217/255, alpha: 1.0)
             
             let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
             let image = renderer.image { ctx in
                 ctx.cgContext.setFillColor(bgColor.cgColor)
-                ctx.cgContext.setShadow(offset: CGSize(width: 0, height: 2), blur: 4, color: UIColor.black.withAlphaComponent(0.2).cgColor)
+                let shadowRadius: CGFloat = isSelected ? 6 : 4
+                let shadowOpacity: Float = isSelected ? 0.4 : 0.2
+                ctx.cgContext.setShadow(offset: CGSize(width: 0, height: 2), blur: shadowRadius, color: UIColor.black.withAlphaComponent(CGFloat(shadowOpacity)).cgColor)
                 ctx.cgContext.fillEllipse(in: CGRect(x: 2, y: 2, width: size-4, height: size-4))
                 
                 if let pawImage = UIImage(systemName: "pawprint.fill")?.withTintColor(iconColor, renderingMode: .alwaysOriginal) {
@@ -127,7 +129,21 @@ struct MapContainerView: UIViewRepresentable {
             if let pointAnn = annotation as? MKPointAnnotation,
                let view = mapView.view(for: annotation) {
                 let isSelected = pointAnn.subtitle == selectedAnnotationID
-                context.coordinator.updateAnnotationView(view, for: pointAnn, isSelected: isSelected)
+                let wasSelected = view.layer.zPosition == 1
+                
+                if isSelected != wasSelected || view.image == nil {
+                    context.coordinator.updateAnnotationView(view, for: pointAnn, isSelected: isSelected)
+                    
+                    if isSelected {
+                        UIView.animate(withDuration: 0.3, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.8) {
+                            view.transform = CGAffineTransform(scaleX: 1.2, y: 1.2)
+                        }
+                    } else {
+                        UIView.animate(withDuration: 0.3) {
+                            view.transform = .identity
+                        }
+                    }
+                }
             }
         }
         

@@ -265,6 +265,11 @@ class AppState: ObservableObject {
         var postToSave = post
         postToSave.id = newRef.documentID // Explicitly set ID
         
+        await MainActor.run {
+            self.posts.insert(postToSave, at: 0)
+            self.myActivePosts.insert(postToSave, at: 0)
+        }
+        
         let encodedData = try Firestore.Encoder().encode(postToSave)
         try await newRef.setData(encodedData, merge: true)
     }
@@ -276,6 +281,10 @@ class AppState: ObservableObject {
     }
     
     func deletePost(_ postId: String) async throws {
+        await MainActor.run {
+            self.posts.removeAll { $0.id == postId }
+            self.myActivePosts.removeAll { $0.id == postId }
+        }
         try await db.collection("posts").document(postId).delete()
     }
     
