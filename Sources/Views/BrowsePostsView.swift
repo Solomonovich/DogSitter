@@ -72,15 +72,14 @@ struct BrowsePostsView: View {
         }
     }
     
-    var computedSelectedPostID: String? {
-        if isShowingPostDetail {
-            return selectedPost?.id
-        } else if sheetHeight <= collapsedHeight + 50 {
-            if sortedPosts.indices.contains(selectedPostIndex) {
-                return sortedPosts[selectedPostIndex].id
-            }
+    var currentSelectedPostID: String? {
+        guard !isShowingPostDetail else { 
+            return selectedPost?.id 
         }
-        return nil
+        guard sheetHeight <= collapsedHeight + 50 else { 
+            return nil 
+        }
+        return sortedPosts.indices.contains(selectedPostIndex) ? sortedPosts[selectedPostIndex].id : nil
     }
     
     var body: some View {
@@ -88,7 +87,7 @@ struct BrowsePostsView: View {
             MapContainerView(
                 centerCoordinate: $mapCenter,
                 annotations: mapAnnotations,
-                selectedAnnotationID: computedSelectedPostID,
+                selectedAnnotationID: currentSelectedPostID,
                 onAnnotationTapped: { ann in
                     if let id = ann.subtitle, let post = sortedPosts.first(where: { $0.id == id }) {
                         if let idx = sortedPosts.firstIndex(where: { $0.id == post.id }) {

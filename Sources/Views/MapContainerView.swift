@@ -129,20 +129,17 @@ struct MapContainerView: UIViewRepresentable {
             if let pointAnn = annotation as? MKPointAnnotation,
                let view = mapView.view(for: annotation) {
                 let isSelected = pointAnn.subtitle == selectedAnnotationID
-                let wasSelected = view.layer.zPosition == 1
                 
-                if isSelected != wasSelected || view.image == nil {
-                    context.coordinator.updateAnnotationView(view, for: pointAnn, isSelected: isSelected)
-                    
-                    if isSelected {
-                        UIView.animate(withDuration: 0.3, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.8) {
-                            view.transform = CGAffineTransform(scaleX: 1.2, y: 1.2)
-                        }
-                    } else {
-                        UIView.animate(withDuration: 0.3) {
-                            view.transform = .identity
-                        }
-                    }
+                // Force reset ALL to normal first
+                view.transform = .identity
+                context.coordinator.updateAnnotationView(view, for: pointAnn, isSelected: false)
+                
+                // Then animate only the selected one
+                if isSelected {
+                    UIView.animate(withDuration: 0.3, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.8, options: [], animations: {
+                        context.coordinator.updateAnnotationView(view, for: pointAnn, isSelected: true)
+                        view.transform = CGAffineTransform(scaleX: 1.2, y: 1.2)
+                    })
                 }
             }
         }
@@ -157,15 +154,7 @@ struct MapContainerView: UIViewRepresentable {
                 .distance(from: CLLocation(latitude: center.latitude, longitude: center.longitude))
             
             if distance > 100 {
-                if selectedAnnotationID != nil {
-                    // Zoom in on selected post
-                    let region = MKCoordinateRegion(center: center, latitudinalMeters: 2000, longitudinalMeters: 2000)
-                    mapView.setRegion(region, animated: true)
-                } else {
-                    // Zoom out to show 10km radius for all posts
-                    let region = MKCoordinateRegion(center: center, latitudinalMeters: 20000, longitudinalMeters: 20000)
-                    mapView.setRegion(region, animated: true)
-                }
+                mapView.setCenter(center, animated: true)
             }
         } else {
             // Default Israel view
