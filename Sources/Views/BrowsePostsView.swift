@@ -72,15 +72,28 @@ struct BrowsePostsView: View {
         }
     }
     
+    var computedSelectedPostID: String? {
+        if isShowingPostDetail {
+            return selectedPost?.id
+        } else if sheetHeight <= collapsedHeight + 50 {
+            if sortedPosts.indices.contains(selectedPostIndex) {
+                return sortedPosts[selectedPostIndex].id
+            }
+        }
+        return nil
+    }
+    
     var body: some View {
         ZStack(alignment: .top) {
             MapContainerView(
-                centerCoordinate: mapCenter,
+                centerCoordinate: $mapCenter,
                 annotations: mapAnnotations,
-                selectedAnnotationID: selectedPost?.id,
+                selectedAnnotationID: computedSelectedPostID,
                 onAnnotationTapped: { ann in
                     if let id = ann.subtitle, let post = sortedPosts.first(where: { $0.id == id }) {
-                        openPost(post)
+                        if let idx = sortedPosts.firstIndex(where: { $0.id == post.id }) {
+                            selectedPostIndex = idx
+                        }
                     }
                 },
                 onMapTapped: {
@@ -154,6 +167,13 @@ struct BrowsePostsView: View {
                                     }
                                 }
                                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+                                .onChange(of: selectedPostIndex) { newIndex in
+                                    guard newIndex < sortedPosts.count else { return }
+                                    let post = sortedPosts[newIndex]
+                                    if let lat = post.latitude, let lon = post.longitude {
+                                        mapCenter = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+                                    }
+                                }
                             } else {
                                 Text("אין פוסטים שמתאימים לסינון")
                                     .foregroundColor(.gray)

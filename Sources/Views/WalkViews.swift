@@ -15,7 +15,7 @@ struct WalkMessageBubble: View {
             VStack(spacing: 0) {
                 // Top 2/3: Map Placeholder
                 MapContainerView(
-                    centerCoordinate: nil,
+                    centerCoordinate: .constant(nil),
                     annotations: [],
                     route: [],
                     isFollowingUser: false
@@ -75,7 +75,7 @@ struct PreWalkOverlayView: View {
         GeometryReader { geo in
             VStack(spacing: 0) {
                 MapContainerView(
-                    centerCoordinate: sharedWalkTracker.lastLocation?.coordinate,
+                    centerCoordinate: .constant(sharedWalkTracker.lastLocation?.coordinate),
                     annotations: [],
                     route: [],
                     isFollowingUser: true
@@ -144,7 +144,7 @@ struct ActiveWalkOverlayView: View {
         GeometryReader { geo in
             VStack(spacing: 0) {
                 MapContainerView(
-                    centerCoordinate: nil,
+                    centerCoordinate: .constant(nil),
                     annotations: [],
                     route: tracker.walkRoute,
                     isFollowingUser: true

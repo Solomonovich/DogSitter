@@ -2,7 +2,7 @@ import SwiftUI
 import MapKit
 
 struct MapContainerView: UIViewRepresentable {
-    var centerCoordinate: CLLocationCoordinate2D?
+    @Binding var centerCoordinate: CLLocationCoordinate2D?
     var annotations: [MKPointAnnotation] = []
     var route: [CLLocationCoordinate2D] = []
     var isFollowingUser: Bool = false
@@ -152,14 +152,20 @@ struct MapContainerView: UIViewRepresentable {
             let region = MKCoordinateRegion(center: userLoc, latitudinalMeters: 500, longitudinalMeters: 500)
             mapView.setRegion(region, animated: true)
         } else if let center = centerCoordinate {
-            if selectedAnnotationID != nil {
-                // Zoom in on selected post
-                let region = MKCoordinateRegion(center: center, latitudinalMeters: 2000, longitudinalMeters: 2000)
-                mapView.setRegion(region, animated: true)
-            } else {
-                // Zoom out to show 10km radius for all posts
-                let region = MKCoordinateRegion(center: center, latitudinalMeters: 20000, longitudinalMeters: 20000)
-                mapView.setRegion(region, animated: true)
+            let currentCenter = mapView.centerCoordinate
+            let distance = CLLocation(latitude: currentCenter.latitude, longitude: currentCenter.longitude)
+                .distance(from: CLLocation(latitude: center.latitude, longitude: center.longitude))
+            
+            if distance > 100 {
+                if selectedAnnotationID != nil {
+                    // Zoom in on selected post
+                    let region = MKCoordinateRegion(center: center, latitudinalMeters: 2000, longitudinalMeters: 2000)
+                    mapView.setRegion(region, animated: true)
+                } else {
+                    // Zoom out to show 10km radius for all posts
+                    let region = MKCoordinateRegion(center: center, latitudinalMeters: 20000, longitudinalMeters: 20000)
+                    mapView.setRegion(region, animated: true)
+                }
             }
         } else {
             // Default Israel view
