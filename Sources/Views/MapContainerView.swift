@@ -111,6 +111,9 @@ struct MapContainerView: UIViewRepresentable {
     }
     
     func updateUIView(_ mapView: MKMapView, context: Context) {
+        context.coordinator.parent = self
+        mapView.layoutMargins = UIEdgeInsets(top: 100, left: 0, bottom: 400, right: 0)
+        
         // Update Annotations
         let currentAnnotations = mapView.annotations.filter { !($0 is MKUserLocation) }
         mapView.removeAnnotations(currentAnnotations)
