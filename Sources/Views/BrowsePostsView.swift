@@ -299,22 +299,7 @@ struct FilterBarView: View {
     let petCounts = ["הכל", "1", "2", "3+"]
     
     var body: some View {
-        VStack(alignment: .trailing, spacing: 8) {
-            Button(action: {
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                    isExpanded.toggle()
-                }
-            }) {
-                Image(systemName: "slider.horizontal.3")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(isExpanded ? .white : .primary)
-                    .frame(width: 40, height: 40)
-                    .background(isExpanded ? Color.blue : Color.white)
-                    .clipShape(Circle())
-                    .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
-            }
-            .padding(.trailing, 16)
-            
+        HStack(alignment: .top, spacing: 12) {
             if isExpanded {
                 VStack(alignment: .trailing, spacing: 12) {
                     // Sitting Type
@@ -375,12 +360,26 @@ struct FilterBarView: View {
                 .background(Color.white.opacity(0.95))
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 4)
-                .padding(.horizontal, 16)
                 .transition(.asymmetric(
-                    insertion: .scale(scale: 0.8, anchor: .topTrailing).combined(with: .opacity).combined(with: .offset(y: -10)),
-                    removal: .scale(scale: 0.8, anchor: .topTrailing).combined(with: .opacity).combined(with: .offset(y: -10))
+                    insertion: .scale(scale: 0.8, anchor: .topTrailing).combined(with: .opacity).combined(with: .offset(x: 20)),
+                    removal: .scale(scale: 0.8, anchor: .topTrailing).combined(with: .opacity).combined(with: .offset(x: 20))
                 ))
             }
+
+            Button(action: {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                    isExpanded.toggle()
+                }
+            }) {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(isExpanded ? .white : .gray)
+                    .frame(width: 40, height: 40)
+                    .background(isExpanded ? Color.blue : Color.white)
+                    .clipShape(Circle())
+                    .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+            }
+            .padding(.trailing, 16)
         }
     }
 }
