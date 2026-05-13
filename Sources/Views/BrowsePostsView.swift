@@ -106,8 +106,12 @@ struct BrowsePostsView: View {
                 .ignoresSafeArea()
             
             if !isShowingPostDetail {
-                FilterBarView(selectedSittingType: $selectedSittingType, selectedPetCount: $selectedPetCount)
-                    .padding(.top, 50)
+                HStack {
+                    Spacer()
+                    FilterBarView(selectedSittingType: $selectedSittingType, selectedPetCount: $selectedPetCount)
+                }
+                .padding(.top, 50)
+                .zIndex(2)
             }
             
             VStack(spacing: 0) {
@@ -289,53 +293,95 @@ struct RoundedCorner: Shape {
 struct FilterBarView: View {
     @Binding var selectedSittingType: String
     @Binding var selectedPetCount: String
+    @State private var isExpanded: Bool = false
     
     let sittingTypes = ["הכל", "דוגווקינג", "פנסיון", "ביקור בית", "אילוף"]
     let petCounts = ["הכל", "1", "2", "3+"]
     
     var body: some View {
-        VStack(spacing: 8) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack {
-                    ForEach(sittingTypes, id: \.self) { type in
-                        Text(type)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(selectedSittingType == type ? Color.blue : Color(.systemGray6))
-                            .foregroundColor(selectedSittingType == type ? .white : .primary)
-                            .cornerRadius(20)
-                            .onTapGesture {
-                                selectedSittingType = type
-                            }
-                    }
+        VStack(alignment: .trailing, spacing: 12) {
+            Button(action: {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                    isExpanded.toggle()
                 }
-                .padding(.horizontal)
+            }) {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundColor(isExpanded ? .white : .primary)
+                    .frame(width: 48, height: 48)
+                    .background(isExpanded ? Color.blue : Color.white)
+                    .clipShape(Circle())
+                    .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
             }
-            .environment(\.layoutDirection, .rightToLeft)
+            .padding(.trailing, 20)
             
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack {
-                    ForEach(petCounts, id: \.self) { count in
-                        Text(count)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(selectedPetCount == count ? Color.blue : Color(.systemGray6))
-                            .foregroundColor(selectedPetCount == count ? .white : .primary)
-                            .cornerRadius(20)
-                            .onTapGesture {
-                                selectedPetCount = count
+            if isExpanded {
+                VStack(alignment: .trailing, spacing: 20) {
+                    // Sitting Type
+                    VStack(alignment: .trailing, spacing: 10) {
+                        Text("סוג שירות")
+                            .font(.subheadline.bold())
+                            .foregroundColor(.primary)
+                        
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(sittingTypes, id: \.self) { type in
+                                    Text(type)
+                                        .font(.subheadline)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 8)
+                                        .background(selectedSittingType == type ? Color.blue : Color(.systemGray6))
+                                        .foregroundColor(selectedSittingType == type ? .white : .primary)
+                                        .clipShape(Capsule())
+                                        .onTapGesture {
+                                            withAnimation(.easeInOut(duration: 0.2)) {
+                                                selectedSittingType = type
+                                            }
+                                        }
+                                }
                             }
+                        }
+                        .environment(\.layoutDirection, .rightToLeft)
+                    }
+                    
+                    // Pet count
+                    VStack(alignment: .trailing, spacing: 10) {
+                        Text("מספר כלבים")
+                            .font(.subheadline.bold())
+                            .foregroundColor(.primary)
+                        
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(petCounts, id: \.self) { count in
+                                    Text(count)
+                                        .font(.subheadline)
+                                        .padding(.horizontal, 20)
+                                        .padding(.vertical, 8)
+                                        .background(selectedPetCount == count ? Color.blue : Color(.systemGray6))
+                                        .foregroundColor(selectedPetCount == count ? .white : .primary)
+                                        .clipShape(Capsule())
+                                        .onTapGesture {
+                                            withAnimation(.easeInOut(duration: 0.2)) {
+                                                selectedPetCount = count
+                                            }
+                                        }
+                                }
+                            }
+                        }
+                        .environment(\.layoutDirection, .rightToLeft)
                     }
                 }
-                .padding(.horizontal)
+                .padding(20)
+                .background(Color.white.opacity(0.95))
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .shadow(color: .black.opacity(0.15), radius: 15, x: 0, y: 8)
+                .padding(.horizontal, 20)
+                .transition(.asymmetric(
+                    insertion: .scale(scale: 0.8, anchor: .topTrailing).combined(with: .opacity).combined(with: .offset(y: -20)),
+                    removal: .scale(scale: 0.8, anchor: .topTrailing).combined(with: .opacity).combined(with: .offset(y: -20))
+                ))
             }
-            .environment(\.layoutDirection, .rightToLeft)
         }
-        .padding(.vertical, 10)
-        .background(Color.white.opacity(0.95))
-        .cornerRadius(16)
-        .padding(.horizontal)
-        .shadow(color: .black.opacity(0.1), radius: 5, y: 2)
     }
 }
 
