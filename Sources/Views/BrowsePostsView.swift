@@ -299,37 +299,37 @@ struct FilterBarView: View {
     let petCounts = ["הכל", "1", "2", "3+"]
     
     var body: some View {
-        VStack(alignment: .trailing, spacing: 12) {
+        VStack(alignment: .trailing, spacing: 8) {
             Button(action: {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
                     isExpanded.toggle()
                 }
             }) {
                 Image(systemName: "slider.horizontal.3")
-                    .font(.system(size: 22, weight: .semibold))
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(isExpanded ? .white : .primary)
-                    .frame(width: 48, height: 48)
+                    .frame(width: 40, height: 40)
                     .background(isExpanded ? Color.blue : Color.white)
                     .clipShape(Circle())
                     .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
             }
-            .padding(.trailing, 20)
+            .padding(.trailing, 16)
             
             if isExpanded {
-                VStack(alignment: .trailing, spacing: 20) {
+                VStack(alignment: .trailing, spacing: 12) {
                     // Sitting Type
-                    VStack(alignment: .trailing, spacing: 10) {
+                    VStack(alignment: .trailing, spacing: 4) {
                         Text("סוג שירות")
-                            .font(.subheadline.bold())
+                            .font(.caption.bold())
                             .foregroundColor(.primary)
                         
                         ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
+                            HStack(spacing: 6) {
                                 ForEach(sittingTypes, id: \.self) { type in
                                     Text(type)
-                                        .font(.subheadline)
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 8)
+                                        .font(.caption)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
                                         .background(selectedSittingType == type ? Color.blue : Color(.systemGray6))
                                         .foregroundColor(selectedSittingType == type ? .white : .primary)
                                         .clipShape(Capsule())
@@ -345,18 +345,18 @@ struct FilterBarView: View {
                     }
                     
                     // Pet count
-                    VStack(alignment: .trailing, spacing: 10) {
+                    VStack(alignment: .trailing, spacing: 4) {
                         Text("מספר כלבים")
-                            .font(.subheadline.bold())
+                            .font(.caption.bold())
                             .foregroundColor(.primary)
                         
                         ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
+                            HStack(spacing: 6) {
                                 ForEach(petCounts, id: \.self) { count in
                                     Text(count)
-                                        .font(.subheadline)
-                                        .padding(.horizontal, 20)
-                                        .padding(.vertical, 8)
+                                        .font(.caption)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
                                         .background(selectedPetCount == count ? Color.blue : Color(.systemGray6))
                                         .foregroundColor(selectedPetCount == count ? .white : .primary)
                                         .clipShape(Capsule())
@@ -371,14 +371,14 @@ struct FilterBarView: View {
                         .environment(\.layoutDirection, .rightToLeft)
                     }
                 }
-                .padding(20)
+                .padding(12)
                 .background(Color.white.opacity(0.95))
-                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                .shadow(color: .black.opacity(0.15), radius: 15, x: 0, y: 8)
-                .padding(.horizontal, 20)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 4)
+                .padding(.horizontal, 16)
                 .transition(.asymmetric(
-                    insertion: .scale(scale: 0.8, anchor: .topTrailing).combined(with: .opacity).combined(with: .offset(y: -20)),
-                    removal: .scale(scale: 0.8, anchor: .topTrailing).combined(with: .opacity).combined(with: .offset(y: -20))
+                    insertion: .scale(scale: 0.8, anchor: .topTrailing).combined(with: .opacity).combined(with: .offset(y: -10)),
+                    removal: .scale(scale: 0.8, anchor: .topTrailing).combined(with: .opacity).combined(with: .offset(y: -10))
                 ))
             }
         }
