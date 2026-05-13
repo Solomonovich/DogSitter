@@ -163,7 +163,7 @@ struct MapContainerView: UIViewRepresentable {
             // Default Israel view
             if mapView.region.span.latitudeDelta > 10.0 {
                 let israelCenter = CLLocationCoordinate2D(latitude: 31.0461, longitude: 34.8516)
-                let region = MKCoordinateRegion(center: israelCenter, latitudinalMeters: 200000, longitudinalMeters: 200000)
+                let region = MKCoordinateRegion(center: israelCenter, latitudinalMeters: 100000, longitudinalMeters: 100000)
                 mapView.setRegion(region, animated: false)
             }
         }
