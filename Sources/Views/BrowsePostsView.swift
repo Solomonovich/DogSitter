@@ -768,14 +768,16 @@ struct PostDetailSheetView: View {
             loadedPets = await appState.fetchPets(for: post.petIds)
         }
         .sheet(item: $selectedPet) { pet in
-            PetDetailOverlayView(pet: pet)
+            PetDetailOverlayView(pet: pet, post: post)
         }
     }
 }
 
 struct PetDetailOverlayView: View {
     let pet: Pet
+    let post: Post
     @Environment(\.presentationMode) var presentationMode
+    @State private var selectedImageURL: String? = nil
     
     var ageString: String {
         if pet.ageMonths > 0 {
@@ -785,141 +787,202 @@ struct PetDetailOverlayView: View {
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Button(action: { presentationMode.wrappedValue.dismiss() }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title)
-                        .foregroundColor(Color(.systemGray3))
+        ZStack {
+            VStack(spacing: 0) {
+                HStack {
+                    Button(action: { presentationMode.wrappedValue.dismiss() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title)
+                            .foregroundColor(Color(.systemGray3))
+                    }
+                    Spacer()
+                    Text(pet.name)
+                        .font(.headline)
+                    Spacer()
+                    Image(systemName: "xmark.circle.fill").opacity(0)
                 }
-                Spacer()
-                Text(pet.name)
-                    .font(.headline)
-                Spacer()
-                Image(systemName: "xmark.circle.fill").opacity(0)
-            }
-            .padding()
-            .background(Color.white)
-            .environment(\.layoutDirection, .leftToRight) // Force X on left
-            
-            ScrollView {
-                VStack(spacing: 20) {
-                    if let urls = pet.photoURLs, !urls.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 12) {
-                                ForEach(urls, id: \.self) { urlString in
-                                    if let url = URL(string: urlString) {
-                                        AsyncImage(url: url) { phase in
-                                            if let image = phase.image {
-                                                image.resizable().aspectRatio(contentMode: .fill)
+                .padding()
+                .background(Color.white)
+                .environment(\.layoutDirection, .leftToRight) // Force X on left
+                
+                ScrollView {
+                    VStack(spacing: 20) {
+                        if let urls = pet.photoURLs, !urls.isEmpty {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 12) {
+                                    ForEach(urls, id: \.self) { urlString in
+                                        if let url = URL(string: urlString) {
+                                            AsyncImage(url: url) { phase in
+                                                if let image = phase.image {
+                                                    image.resizable().aspectRatio(contentMode: .fill)
+                                                }
+                                            }
+                                            .frame(width: 250, height: 250)
+                                            .cornerRadius(16)
+                                            .clipped()
+                                            .onTapGesture {
+                                                withAnimation(.easeInOut(duration: 0.2)) {
+                                                    selectedImageURL = urlString
+                                                }
                                             }
                                         }
-                                        .frame(width: 250, height: 250)
-                                        .cornerRadius(16)
-                                        .clipped()
                                     }
                                 }
+                                .padding(.horizontal)
                             }
-                            .padding(.horizontal)
+                            .environment(\.layoutDirection, .rightToLeft)
                         }
+                        
+                        VStack(alignment: .leading, spacing: 16) {
+
+                            // 2. Additional Info
+                            if !pet.additionalInfo.isEmpty {
+                                Text(pet.additionalInfo)
+                                    .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2)) // #333333
+                                    .padding(16)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(Color(red: 0.94, green: 0.94, blue: 0.94)) // #F0F0F0
+                                    .cornerRadius(16)
+                            }
+                            
+                            // 3. Behavior section
+                            Text("התנהגות").font(.headline.bold()).padding(.top, 8)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Text("ידידותי לילדים")
+                                        .foregroundColor(Color(white: 0.1))
+                                    Text(pet.friendlyWithChildren)
+                                        .font(.caption.bold())
+                                        .foregroundColor(Color(white: 0.1))
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(pet.friendlyWithChildren == "כן מאוד" ? Color.green.opacity(0.2) : (pet.friendlyWithChildren == "לפעמים" ? Color.orange.opacity(0.2) : Color.red.opacity(0.2)))
+                                        .cornerRadius(8)
+                                    Spacer()
+                                }.frame(maxWidth: .infinity, alignment: .leading)
+                                HStack {
+                                    Text("ידידותי לכלבים")
+                                        .foregroundColor(Color(white: 0.1))
+                                    Text(pet.friendlyWithDogs)
+                                        .font(.caption.bold())
+                                        .foregroundColor(Color(white: 0.1))
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(pet.friendlyWithDogs == "כן מאוד" ? Color.green.opacity(0.2) : (pet.friendlyWithDogs == "לפעמים" ? Color.orange.opacity(0.2) : Color.red.opacity(0.2)))
+                                        .cornerRadius(8)
+                                    Spacer()
+                                }.frame(maxWidth: .infinity, alignment: .leading)
+                                HStack {
+                                    Text("ידידותי לחתולים")
+                                        .foregroundColor(Color(white: 0.1))
+                                    Text(pet.friendlyWithCats)
+                                        .font(.caption.bold())
+                                        .foregroundColor(Color(white: 0.1))
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(pet.friendlyWithCats == "כן מאוד" ? Color.green.opacity(0.2) : (pet.friendlyWithCats == "לפעמים" ? Color.orange.opacity(0.2) : Color.red.opacity(0.2)))
+                                        .cornerRadius(8)
+                                    Spacer()
+                                }.frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .padding()
+                            .background(Color.white)
+                            .cornerRadius(16)
+                            .shadow(color: .black.opacity(0.05), radius: 5)
+                            
+                            // 4. Medical section (LAST)
+                            Text("מידע רפואי").font(.headline.bold()).padding(.top, 8)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Text(pet.isMicrochipped ? "יש שבב ✅" : "אין שבב ❌")
+                                        .foregroundColor(Color(white: 0.1)) // #1A1A1A
+                                        .font(.body)
+                                    Spacer()
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                
+                                HStack {
+                                    Text(pet.isNeutered ? "מסורס ✅" : "לא מסורס ❌")
+                                        .foregroundColor(Color(white: 0.1)) // #1A1A1A
+                                        .font(.body)
+                                    Spacer()
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                
+                                HStack {
+                                    if post.medication {
+                                        Text("תרופות: \(post.medicationInfo ?? "")")
+                                            .foregroundColor(Color(white: 0.1)) // #1A1A1A
+                                            .font(.body)
+                                    } else {
+                                        Text("ללא תרופות ✅")
+                                            .foregroundColor(Color(white: 0.1)) // #1A1A1A
+                                            .font(.body)
+                                    }
+                                    Spacer()
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .padding()
+                            .background(Color.white)
+                            .cornerRadius(16)
+                            .shadow(color: .black.opacity(0.05), radius: 5)
+                        }
+                        .padding(.horizontal)
                         .environment(\.layoutDirection, .rightToLeft)
                     }
-                    
-                    VStack(alignment: .trailing, spacing: 16) {
-                        // Basic Info
-                        VStack(alignment: .trailing, spacing: 8) {
-                            Text(pet.name).font(.title2.bold())
-                                .frame(maxWidth: .infinity, alignment: .trailing)
-                            Text(pet.breed.joined(separator: ", ")).foregroundColor(.gray)
-                                .frame(maxWidth: .infinity, alignment: .trailing)
-                            Divider()
-                            HStack(spacing: 12) {
-                                Text(ageString).font(.body)
-                            }.frame(maxWidth: .infinity, alignment: .trailing)
-                            HStack(spacing: 12) {
-                                Text("\(pet.weight) ק״ג").font(.body)
-                            }.frame(maxWidth: .infinity, alignment: .trailing)
-                            HStack(spacing: 12) {
-                                Text(pet.sex).font(.body)
-                            }.frame(maxWidth: .infinity, alignment: .trailing)
-                        }
-                        .padding()
-                        .background(Color.white)
-                        .cornerRadius(16)
-                        .shadow(color: .black.opacity(0.05), radius: 5)
-                        
-                        // Medical
-                        Text("מידע רפואי").font(.headline.bold()).padding(.top, 8)
-                            .frame(maxWidth: .infinity, alignment: .trailing)
-                        VStack(alignment: .trailing, spacing: 8) {
-                            HStack(spacing: 12) {
-                                Text(pet.isMicrochipped ? "יש שבב ✅" : "אין שבב ❌").font(.body)
-                            }.frame(maxWidth: .infinity, alignment: .trailing)
-                            HStack(spacing: 12) {
-                                Text(pet.isNeutered ? "מסורס ✅" : "לא מסורס ❌").font(.body)
-                            }.frame(maxWidth: .infinity, alignment: .trailing)
-                        }
-                        .padding()
-                        .background(Color.white)
-                        .cornerRadius(16)
-                        .shadow(color: .black.opacity(0.05), radius: 5)
-                        
-                        // Behavior
-                        Text("התנהגות").font(.headline.bold()).padding(.top, 8)
-                            .frame(maxWidth: .infinity, alignment: .trailing)
-                        VStack(alignment: .trailing, spacing: 8) {
-                            HStack {
-                                Spacer()
-                                Text(pet.friendlyWithChildren)
-                                    .font(.caption.bold())
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(pet.friendlyWithChildren == "כן מאוד" ? Color.green.opacity(0.2) : (pet.friendlyWithChildren == "לפעמים" ? Color.orange.opacity(0.2) : Color.red.opacity(0.2)))
-                                    .cornerRadius(8)
-                                Text("ידידותי לילדים")
-                            }.frame(maxWidth: .infinity, alignment: .trailing)
-                            HStack {
-                                Spacer()
-                                Text(pet.friendlyWithDogs)
-                                    .font(.caption.bold())
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(pet.friendlyWithDogs == "כן מאוד" ? Color.green.opacity(0.2) : (pet.friendlyWithDogs == "לפעמים" ? Color.orange.opacity(0.2) : Color.red.opacity(0.2)))
-                                    .cornerRadius(8)
-                                Text("ידידותי לכלבים")
-                            }.frame(maxWidth: .infinity, alignment: .trailing)
-                            HStack {
-                                Spacer()
-                                Text(pet.friendlyWithCats)
-                                    .font(.caption.bold())
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(pet.friendlyWithCats == "כן מאוד" ? Color.green.opacity(0.2) : (pet.friendlyWithCats == "לפעמים" ? Color.orange.opacity(0.2) : Color.red.opacity(0.2)))
-                                    .cornerRadius(8)
-                                Text("ידידותי לחתולים")
-                            }.frame(maxWidth: .infinity, alignment: .trailing)
-                        }
-                        .padding()
-                        .background(Color.white)
-                        .cornerRadius(16)
-                        .shadow(color: .black.opacity(0.05), radius: 5)
-                        
-                        if !pet.additionalInfo.isEmpty {
-                            Text("מידע נוסף").font(.headline.bold()).padding(.top, 8)
-                                .frame(maxWidth: .infinity, alignment: .trailing)
-                            Text(pet.additionalInfo)
-                                .padding()
-                                .frame(maxWidth: .infinity, alignment: .trailing)
-                                .background(Color(.systemGray6))
-                                .cornerRadius(16)
-                        }
-                    }
-                    .padding(.horizontal)
-                    .environment(\.layoutDirection, .rightToLeft)
+                    .padding(.vertical)
                 }
-                .padding(.vertical)
+                .background(Color(.systemGroupedBackground))
             }
-            .background(Color(.systemGroupedBackground))
+            
+            // LIGHTBOX OVERLAY
+            if let imageURL = selectedImageURL, let url = URL(string: imageURL) {
+                ZStack {
+                    Color.black.opacity(0.85)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedImageURL = nil
+                            }
+                        }
+                    
+                    VStack {
+                        HStack {
+                            Button(action: {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    selectedImageURL = nil
+                                }
+                            }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.title)
+                                    .foregroundColor(.white)
+                            }
+                            Spacer()
+                        }
+                        .padding()
+                        
+                        Spacer()
+                        
+                        AsyncImage(url: url) { phase in
+                            if let image = phase.image {
+                                image.resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(maxWidth: .infinity)
+                            } else {
+                                ProgressView().tint(.white)
+                            }
+                        }
+                        
+                        Spacer()
+                    }
+                }
+                .transition(.opacity)
+                .zIndex(100)
+                .environment(\.layoutDirection, .leftToRight) // Force X on left
+            }
         }
     }
 }
