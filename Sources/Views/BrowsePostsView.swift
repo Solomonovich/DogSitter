@@ -22,6 +22,7 @@ struct BrowsePostsView: View {
     @State private var dragStartHeight: CGFloat = 400
     
     @State private var selectedPostIndex: Int = 0
+    @State private var previousPostIndex: Int = 0
     @State private var mapCenter: CLLocationCoordinate2D?
     
     var sortedPosts: [Post] {
@@ -247,6 +248,10 @@ struct BrowsePostsView: View {
     }
     
     func openPost(_ post: Post) {
+        previousPostIndex = selectedPostIndex
+        if let idx = sortedPosts.firstIndex(where: { $0.id == post.id }) {
+            selectedPostIndex = idx
+        }
         previousSheetHeight = sheetHeight
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
             sheetHeight = 0
@@ -267,6 +272,7 @@ struct BrowsePostsView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             isShowingPostDetail = false
             selectedPost = nil
+            selectedPostIndex = previousPostIndex
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                 sheetHeight = previousSheetHeight
             }

@@ -42,7 +42,9 @@ struct MapContainerView: UIViewRepresentable {
                 view?.annotation = annotation
             }
             
-            updateAnnotationView(view!, for: pointAnn, isSelected: pointAnn.subtitle == parent.selectedAnnotationID)
+            let isSelected = pointAnn.subtitle == parent.selectedAnnotationID
+            updateAnnotationView(view!, for: pointAnn, isSelected: isSelected)
+            view!.transform = isSelected ? CGAffineTransform(scaleX: 1.2, y: 1.2) : .identity
             return view
         }
         
@@ -114,10 +116,15 @@ struct MapContainerView: UIViewRepresentable {
         context.coordinator.parent = self
         mapView.layoutMargins = UIEdgeInsets(top: 150, left: 0, bottom: 400, right: 0)
         
-        // Update Annotations
+        // Update Annotations only if they changed
         let currentAnnotations = mapView.annotations.filter { !($0 is MKUserLocation) }
-        mapView.removeAnnotations(currentAnnotations)
-        mapView.addAnnotations(annotations)
+        let currentIDs = currentAnnotations.compactMap { ($0 as? MKPointAnnotation)?.subtitle ?? "" }.sorted()
+        let newIDs = annotations.compactMap { $0.subtitle ?? "" }.sorted()
+        
+        if currentIDs != newIDs {
+            mapView.removeAnnotations(currentAnnotations)
+            mapView.addAnnotations(annotations)
+        }
         
         // Update Overlays (Polylines)
         let currentPolylines = mapView.overlays.filter { $0 is MKPolyline }
@@ -127,26 +134,23 @@ struct MapContainerView: UIViewRepresentable {
             mapView.addOverlay(polyline)
         }
         
-        // Update visible annotations selection state with a small delay to debounce
+        // Update visible annotations selection state after a delay to clear animations
         let currentSelectedID = self.selectedAnnotationID
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            // Force reset ALL to normal first
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
             for annotation in mapView.annotations {
                 if let pointAnn = annotation as? MKPointAnnotation,
                    let view = mapView.view(for: annotation) {
-                    view.transform = .identity
-                    context.coordinator.updateAnnotationView(view, for: pointAnn, isSelected: false)
-                }
-            }
-            
-            // Then after resetting all, animate the selected pin
-            for annotation in mapView.annotations {
-                if let pointAnn = annotation as? MKPointAnnotation,
-                   let view = mapView.view(for: annotation) {
-                    if pointAnn.subtitle == currentSelectedID {
+                    let isSelected = pointAnn.subtitle == currentSelectedID
+                    
+                    if isSelected {
                         UIView.animate(withDuration: 0.3, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.8, options: [], animations: {
                             context.coordinator.updateAnnotationView(view, for: pointAnn, isSelected: true)
                             view.transform = CGAffineTransform(scaleX: 1.2, y: 1.2)
+                        })
+                    } else {
+                        UIView.animate(withDuration: 0.3, animations: {
+                            context.coordinator.updateAnnotationView(view, for: pointAnn, isSelected: false)
+                            view.transform = .identity
                         })
                     }
                 }
