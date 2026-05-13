@@ -127,22 +127,28 @@ struct MapContainerView: UIViewRepresentable {
             mapView.addOverlay(polyline)
         }
         
-        // Update visible annotations selection state
-        for annotation in mapView.annotations {
-            if let pointAnn = annotation as? MKPointAnnotation,
-               let view = mapView.view(for: annotation) {
-                let isSelected = pointAnn.subtitle == selectedAnnotationID
-                
-                // Force reset ALL to normal first
-                view.transform = .identity
-                context.coordinator.updateAnnotationView(view, for: pointAnn, isSelected: false)
-                
-                // Then animate only the selected one
-                if isSelected {
-                    UIView.animate(withDuration: 0.3, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.8, options: [], animations: {
-                        context.coordinator.updateAnnotationView(view, for: pointAnn, isSelected: true)
-                        view.transform = CGAffineTransform(scaleX: 1.2, y: 1.2)
-                    })
+        // Update visible annotations selection state with a small delay to debounce
+        let currentSelectedID = self.selectedAnnotationID
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            // Force reset ALL to normal first
+            for annotation in mapView.annotations {
+                if let pointAnn = annotation as? MKPointAnnotation,
+                   let view = mapView.view(for: annotation) {
+                    view.transform = .identity
+                    context.coordinator.updateAnnotationView(view, for: pointAnn, isSelected: false)
+                }
+            }
+            
+            // Then after resetting all, animate the selected pin
+            for annotation in mapView.annotations {
+                if let pointAnn = annotation as? MKPointAnnotation,
+                   let view = mapView.view(for: annotation) {
+                    if pointAnn.subtitle == currentSelectedID {
+                        UIView.animate(withDuration: 0.3, delay: 0, usingSpringWithDamping: 0.6, initialSpringVelocity: 0.8, options: [], animations: {
+                            context.coordinator.updateAnnotationView(view, for: pointAnn, isSelected: true)
+                            view.transform = CGAffineTransform(scaleX: 1.2, y: 1.2)
+                        })
+                    }
                 }
             }
         }
