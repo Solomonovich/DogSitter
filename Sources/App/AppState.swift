@@ -21,6 +21,10 @@ class AppState: ObservableObject {
     @Published var posts: [Post] = []
     @Published var reviews: [Review] = []
     @Published var chats: [Chat] = []
+    
+    // Chat System Models
+    @Published var ownerChatGroups: [OwnerChatGroup] = []
+    @Published var sitterChats: [ChatWrapper] = []
     @Published var myActivePosts: [Post] = []
     
     let db = Firestore.firestore()
@@ -197,26 +201,132 @@ class AppState: ObservableObject {
     // MARK: - Chats Live Synchronizer
     
     func setupChatsListener(uid: String) {
+        if currentUserRole == .owner {
+            loadOwnerChats(uid: uid)
+        } else {
+            loadSitterChats(uid: uid)
+        }
+    }
+    
+    func loadOwnerChats(uid: String) {
         chatsListener?.remove()
-        
-        let roleFilterField = (self.currentUserRole == .sitter) ? "sitterId" : "ownerId"
-        
         chatsListener = db.collection("chats")
-            .whereField(roleFilterField, isEqualTo: uid)
+            .whereField("ownerId", isEqualTo: uid)
             .whereField("archived", isEqualTo: false)
-            .addSnapshotListener { [weak self] snapshot, error in
-                guard let self = self else { return }
+            .addSnapshotListener { [weak self] snapshot, _ in
+                guard let self = self, let docs = snapshot?.documents else { return }
+                let parsedChats = docs.compactMap { try? $0.data(as: Chat.self) }
                 
-                if let error = error {
-                    print("Error loading chats: \(error.localizedDescription)")
-                    return
-                }
-                
-                guard let documents = snapshot?.documents else { return }
-                self.chats = documents.compactMap { try? $0.data(as: Chat.self) }.sorted {
-                    ($0.lastMessageTime?.dateValue() ?? Date.distantPast) > ($1.lastMessageTime?.dateValue() ?? Date.distantPast)
+                Task {
+                    var newGroups: [String: OwnerChatGroup] = [:]
+                    for chat in parsedChats {
+                        if newGroups[chat.postId] == nil {
+                            let post = try? await self.db.collection("posts").document(chat.postId).getDocument(as: Post.self)
+                            let pets = await self.fetchPets(for: post?.petIds ?? [])
+                            newGroups[chat.postId] = OwnerChatGroup(postId: chat.postId, post: post, pets: pets, chats: [])
+                        }
+                        
+                        var wrapper = ChatWrapper(chat: chat)
+                        if let sitter = try? await self.db.collection("users").document(chat.sitterId).getDocument(as: User.self) {
+                            wrapper.otherUser = sitter
+                        }
+                        newGroups[chat.postId]?.chats.append(wrapper)
+                    }
+                    
+                    let sortedGroups = newGroups.values.sorted { $0.lastMessageTime > $1.lastMessageTime }
+                    await MainActor.run {
+                        self.ownerChatGroups = sortedGroups
+                    }
                 }
             }
+    }
+
+    func loadSitterChats(uid: String) {
+        chatsListener?.remove()
+        chatsListener = db.collection("chats")
+            .whereField("sitterId", isEqualTo: uid)
+            .whereField("archived", isEqualTo: false)
+            .addSnapshotListener { [weak self] snapshot, _ in
+                guard let self = self, let docs = snapshot?.documents else { return }
+                let parsedChats = docs.compactMap { try? $0.data(as: Chat.self) }
+                
+                Task {
+                    var wrappers: [ChatWrapper] = []
+                    for chat in parsedChats {
+                        var wrapper = ChatWrapper(chat: chat)
+                        wrapper.post = try? await self.db.collection("posts").document(chat.postId).getDocument(as: Post.self)
+                        wrapper.pets = await self.fetchPets(for: wrapper.post?.petIds ?? [])
+                        if let owner = try? await self.db.collection("users").document(chat.ownerId).getDocument(as: User.self) {
+                            wrapper.otherUser = owner
+                        }
+                        wrappers.append(wrapper)
+                    }
+                    
+                    let sortedWrappers = wrappers.sorted { 
+                        ($0.chat.lastMessageTime?.dateValue() ?? Date.distantPast) > ($1.chat.lastMessageTime?.dateValue() ?? Date.distantPast) 
+                    }
+                    await MainActor.run {
+                        self.sitterChats = sortedWrappers
+                    }
+                }
+            }
+    }
+
+    func sendMessage(chatId: String, text: String) async {
+        guard let user = currentUser, let uid = user.id else { return }
+        let msg = ChatMessage(senderId: uid, senderName: user.name, text: text, type: "text")
+        do {
+            let _ = try db.collection("chats").document(chatId).collection("messages").addDocument(from: msg)
+            try await db.collection("chats").document(chatId).updateData([
+                "lastMessage": text,
+                "lastMessageTime": FieldValue.serverTimestamp()
+            ])
+        } catch { print("Error sending message: \(error)") }
+    }
+
+    func sendPhotoMessage(chatId: String, image: UIImage) async {
+        guard let user = currentUser, let uid = user.id else { return }
+        let msgId = db.collection("chats").document(chatId).collection("messages").document().documentID
+        let path = "dogsitter/chats/\(chatId)"
+        do {
+            let url = try await CloudinaryHelper.uploadImage(image, folder: path, publicId: msgId)
+            var msg = ChatMessage(id: msgId, senderId: uid, senderName: user.name, text: "", type: "photo")
+            msg.photoURL = url
+            try db.collection("chats").document(chatId).collection("messages").document(msgId).setData(from: msg)
+            try await db.collection("chats").document(chatId).updateData([
+                "lastMessage": "📷 תמונה",
+                "lastMessageTime": FieldValue.serverTimestamp()
+            ])
+        } catch { print("Error sending photo: \(error)") }
+    }
+    
+    func sendWalkMessage(chatId: String) async {
+        guard let user = currentUser, let uid = user.id else { return }
+        let text = "🐾 הליכה תתחיל בקרוב"
+        let msg = ChatMessage(senderId: uid, senderName: user.name, text: text, type: "walk")
+        do {
+            let _ = try db.collection("chats").document(chatId).collection("messages").addDocument(from: msg)
+            try await db.collection("chats").document(chatId).updateData([
+                "lastMessage": text,
+                "lastMessageTime": FieldValue.serverTimestamp()
+            ])
+        } catch { print("Error sending walk message: \(error)") }
+    }
+
+    func approveChat(chatId: String, postId: String) async {
+        do {
+            try await db.collection("chats").document(chatId).updateData(["approved": true])
+            try await db.collection("posts").document(postId).updateData(["status": "approved", "approvedSitterId": chatId.components(separatedBy: "_").last ?? ""])
+            
+            let sysMsg = ChatMessage(senderId: "system", senderName: "System", text: "התשלום עבר בהצלחה ✓", type: "payment")
+            let _ = try db.collection("chats").document(chatId).collection("messages").addDocument(from: sysMsg)
+        } catch { print("Error approving chat: \(error)") }
+    }
+
+    func archiveChat(chatId: String) async {
+        do {
+            try await db.collection("chats").document(chatId).updateData(["archived": true])
+        } catch { print("Error archiving chat: \(error)") }
     }
     
     // MARK: - Pets Write Operations

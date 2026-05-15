@@ -158,6 +158,27 @@ struct Chat: Identifiable, Codable {
     var lastMessageTime: Timestamp?
 }
 
+struct ChatWrapper: Identifiable {
+    var id: String { chat.id ?? UUID().uuidString }
+    var chat: Chat
+    var otherUser: User?
+    var post: Post?
+    var pets: [Pet] = []
+}
+
+struct OwnerChatGroup: Identifiable {
+    var id: String { postId }
+    let postId: String
+    var post: Post?
+    var pets: [Pet]
+    var chats: [ChatWrapper]
+    var isApproved: Bool { chats.contains(where: { $0.chat.approved }) }
+    var isActive: Bool { post?.status == "open" || isApproved }
+    var lastMessageTime: Date {
+        chats.compactMap { $0.chat.lastMessageTime?.dateValue() }.max() ?? Date.distantPast
+    }
+}
+
 struct ChatMessage: Identifiable, Codable {
     @DocumentID var id: String?
     var senderId: String
