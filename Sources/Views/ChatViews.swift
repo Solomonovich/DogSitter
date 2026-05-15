@@ -483,7 +483,7 @@ struct ChatDetailView: View {
             ImagePicker(sourceType: .photoLibrary, selectionLimit: 1, selectedImages: $selectedImages)
         }
         .sheet(isPresented: $showingUserProfile) {
-            ChatUserProfileView(otherUserId: appState.currentUserRole == .owner ? chatWrapper.chat.sitterId : chatWrapper.chat.ownerId, chatId: chatWrapper.id)
+            ChatUserProfileView(otherUserId: appState.currentUserRole == .owner ? chatWrapper.chat.sitterId : chatWrapper.chat.ownerId, chatId: chatWrapper.id, isApproved: chatWrapper.chat.approved)
         }
     }
     
@@ -635,6 +635,7 @@ struct ChatUserProfileView: View {
     @EnvironmentObject var appState: AppState
     let otherUserId: String
     let chatId: String
+    let isApproved: Bool
     
     @Environment(\.presentationMode) var presentationMode
     
@@ -679,28 +680,39 @@ struct ChatUserProfileView: View {
                                 .font(.system(size: 22, weight: .bold))
                                 .foregroundColor(Color(white: 0.1))
                             
-                            if let address = user.address, !address.isEmpty {
-                                Text(address)
-                                    .font(.system(size: 15))
-                                    .foregroundColor(Color(white: 0.4))
-                                    .multilineTextAlignment(.center)
-                                    .padding(.horizontal)
-                            }
-                            
-                            if let phone = user.phone, !phone.isEmpty {
-                                Button(action: {
-                                    if let url = URL(string: "tel://\(phone)") {
-                                        UIApplication.shared.open(url)
-                                    }
-                                }) {
-                                    HStack(spacing: 4) {
-                                        Image(systemName: "phone.fill")
-                                            .font(.system(size: 13))
-                                        Text(phone)
-                                            .font(.system(size: 15))
-                                    }
-                                    .foregroundColor(Color(red: 74/255, green: 144/255, blue: 217/255))
+                            if isApproved {
+                                if let address = user.address, !address.isEmpty {
+                                    Text(address)
+                                        .font(.system(size: 15))
+                                        .foregroundColor(Color(white: 0.4))
+                                        .multilineTextAlignment(.center)
+                                        .padding(.horizontal)
                                 }
+                                
+                                if let phone = user.phone, !phone.isEmpty {
+                                    Button(action: {
+                                        if let url = URL(string: "tel://\(phone)") {
+                                            UIApplication.shared.open(url)
+                                        }
+                                    }) {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "phone.fill")
+                                                .font(.system(size: 13))
+                                            Text(phone)
+                                                .font(.system(size: 15))
+                                        }
+                                        .foregroundColor(Color(red: 74/255, green: 144/255, blue: 217/255))
+                                    }
+                                }
+                            } else {
+                                Text("פרטי יצירת קשר יוצגו לאחר אישור הבקינג")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.gray)
+                                    .multilineTextAlignment(.center)
+                                    .padding(16)
+                                    .background(Color(white: 0.95))
+                                    .cornerRadius(12)
+                                    .padding(.horizontal)
                             }
                         }
                         .padding(.top, 20)
