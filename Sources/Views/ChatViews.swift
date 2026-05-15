@@ -454,9 +454,7 @@ struct ChatDetailView: View {
             }
             ToolbarItem(placement: .navigationBarLeading) {
                 Button(action: {
-                    if otherUserFullProfile != nil {
-                        showingUserProfile = true
-                    }
+                    showingUserProfile = true
                 }) {
                     AsyncImage(url: URL(string: appState.currentUserRole == .owner ? (chatWrapper.chat.sitterPhotoURL ?? "") : (chatWrapper.chat.ownerPhotoURL ?? ""))) { phase in
                         if let img = phase.image {
@@ -485,9 +483,7 @@ struct ChatDetailView: View {
             ImagePicker(sourceType: .photoLibrary, selectionLimit: 1, selectedImages: $selectedImages)
         }
         .sheet(isPresented: $showingUserProfile) {
-            if let user = otherUserFullProfile, let cid = chatWrapper.chat.id {
-                ChatUserProfileView(user: user, chatId: cid)
-            }
+            ChatUserProfileView(otherUserId: appState.currentUserRole == .owner ? chatWrapper.chat.sitterId : chatWrapper.chat.ownerId, chatId: chatWrapper.id)
         }
     }
     
@@ -637,10 +633,13 @@ struct ChatBubbleView: View {
 // MARK: - Chat User Profile View
 struct ChatUserProfileView: View {
     @EnvironmentObject var appState: AppState
-    let user: User
+    let otherUserId: String
     let chatId: String
     
     @Environment(\.presentationMode) var presentationMode
+    
+    @State private var user: User? = nil
+    @State private var isLoading = true
     
     @State private var photos: [ChatMessage] = []
     @State private var lastDoc: DocumentSnapshot?
@@ -655,9 +654,16 @@ struct ChatUserProfileView: View {
             ZStack {
                 Color(white: 0.98).edgesIgnoringSafeArea(.all)
                 
-                ScrollView {
-                    VStack(spacing: 20) {
-                        // Header Section
+                if isLoading {
+                    ProgressView()
+                } else if let user = user {
+                    ScrollView {
+                        VStack(spacing: 20) {
+                            Text("View is rendering")
+                                .foregroundColor(.red)
+                                .font(.headline)
+                            
+                            // Header Section
                         VStack(spacing: 8) {
                             AsyncImage(url: URL(string: user.photoURL ?? "")) { phase in
                                 if let img = phase.image {
@@ -756,6 +762,7 @@ struct ChatUserProfileView: View {
                         }
                     }
                 }
+                }
                 
                 // Lightbox
                 if showingLightbox, let url = selectedPhotoURL {
@@ -796,13 +803,26 @@ struct ChatUserProfileView: View {
                     }
                 }
                 ToolbarItem(placement: .principal) {
-                    Text(user.name).font(.headline)
+                    Text(user?.name ?? "").font(.headline)
                 }
             }
             .onAppear {
                 loadInitialPhotos()
             }
+            .task {
+                if let doc = try? await appState.db.collection("users").document(otherUserId).getDocument(as: User.self) {
+                    await MainActor.run {
+                        self.user = doc
+                        self.isLoading = false
+                    }
+                } else {
+                    await MainActor.run {
+                        self.isLoading = false
+                    }
+                }
+            }
         }
+        .background(Color(.systemBackground))
     }
     
     func loadInitialPhotos() {
