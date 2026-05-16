@@ -292,8 +292,10 @@ struct ChatDetailView: View {
     
     @State private var showAttachmentMenu = false
     @State private var showingImagePicker = false
+    @State private var imagePickerSource: UIImagePickerController.SourceType = .photoLibrary
+    @State private var showingImageSourceDialog = false
     @State private var isUploadingPhoto = false
-    @State private var selectedImages: [UIImage] = []
+    @State private var selectedLightboxURL: String? = nil
     
     @State private var otherUserFullProfile: User?
     @State private var showingUserProfile = false
@@ -311,7 +313,7 @@ struct ChatDetailView: View {
                     ScrollView {
                         LazyVStack(spacing: 12) {
                             ForEach(messages) { msg in
-                                ChatBubbleView(msg: msg, currentUserId: appState.currentUser?.id)
+                                ChatBubbleView(msg: msg, currentUserId: appState.currentUser?.id, selectedLightboxURL: $selectedLightboxURL)
                             }
                         }
                         .padding()
@@ -327,6 +329,18 @@ struct ChatDetailView: View {
                 ZStack(alignment: .bottomTrailing) {
                     VStack(spacing: 0) {
                         Divider()
+                        
+                        if isUploadingPhoto {
+                            HStack {
+                                ProgressView()
+                                    .padding(.horizontal)
+                                Text("מעלה תמונה...")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
+                            .padding(.top, 8)
+                        }
+                        
                         HStack(alignment: .bottom, spacing: 12) {
                             // Send Button
                             Button(action: {
@@ -400,7 +414,7 @@ struct ChatDetailView: View {
                             
                             Button(action: {
                                 showAttachmentMenu = false
-                                showingImagePicker = true
+                                showingImageSourceDialog = true
                             }) {
                                 HStack {
                                     Text("הוסף תמונה")
@@ -432,11 +446,37 @@ struct ChatDetailView: View {
                     }
             }
             
-            if isUploadingPhoto {
-                Color.black.opacity(0.3).edgesIgnoringSafeArea(.all)
-                ProgressView()
-                    .scaleEffect(2)
-                    .tint(.white)
+            if let urlString = selectedLightboxURL,
+               let url = URL(string: urlString) {
+                ZStack {
+                    Color.black.opacity(0.85)
+                        .ignoresSafeArea()
+                        .onTapGesture { selectedLightboxURL = nil }
+                    
+                    AsyncImage(url: url) { phase in
+                        if let image = phase.image {
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .padding()
+                        }
+                    }
+                    
+                    VStack {
+                        HStack {
+                            Button(action: { selectedLightboxURL = nil }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.title)
+                                    .foregroundColor(.white)
+                                    .padding()
+                            }
+                            Spacer()
+                        }
+                        Spacer()
+                    }
+                }
+                .zIndex(999)
+                .transition(.opacity)
             }
         }
         .environment(\.layoutDirection, .rightToLeft)
@@ -475,12 +515,27 @@ struct ChatDetailView: View {
         .onDisappear {
             listener?.remove()
         }
-        .sheet(isPresented: $showingImagePicker, onDismiss: {
-            if let img = selectedImages.first {
-                uploadPhoto(img)
+        .confirmationDialog("בחר תמונה", isPresented: $showingImageSourceDialog) {
+            Button("צלם תמונה") {
+                imagePickerSource = .camera
+                showingImagePicker = true
             }
-        }) {
-            ImagePicker(sourceType: .photoLibrary, selectionLimit: 1, selectedImages: $selectedImages)
+            Button("בחר מגלריה") {
+                imagePickerSource = .photoLibrary
+                showingImagePicker = true
+            }
+            Button("ביטול", role: .cancel) {}
+        }
+        .sheet(isPresented: $showingImagePicker) {
+            ChatImagePicker(
+                sourceType: imagePickerSource,
+                onImageSelected: { image in
+                    showingImagePicker = false
+                    Task {
+                        await sendPhotoMessage(image: image)
+                    }
+                }
+            )
         }
         .sheet(isPresented: $showingUserProfile) {
             ChatUserProfileView(otherUserId: appState.currentUserRole == .owner ? chatWrapper.chat.sitterId : chatWrapper.chat.ownerId, chatId: chatWrapper.id, isApproved: chatWrapper.chat.approved)
@@ -508,15 +563,52 @@ struct ChatDetailView: View {
             }
     }
     
-    func uploadPhoto(_ img: UIImage) {
-        isUploadingPhoto = true
-        Task {
-            if let cid = chatWrapper.chat.id {
-                await appState.sendPhotoMessage(chatId: cid, image: img)
-            }
-            selectedImages.removeAll()
-            isUploadingPhoto = false
+    func sendPhotoMessage(image: UIImage) async {
+        guard let chatId = chatWrapper.chat.id,
+              let userId = appState.currentUser?.id 
+        else { return }
+        
+        await MainActor.run { isUploadingPhoto = true }
+        
+        let messageId = UUID().uuidString
+        
+        do {
+            let url = try await CloudinaryHelper.uploadPhoto(
+                image: image,
+                userId: userId,
+                petId: "chats/\(chatId)",
+                index: messageId.hashValue
+            )
+            
+            let messageData: [String: Any] = [
+                "senderId": userId,
+                "senderName": appState.currentUser?.name ?? "",
+                "text": "",
+                "type": "photo",
+                "photoURL": url,
+                "createdAt": Timestamp()
+            ]
+            
+            try await appState.db
+                .collection("chats")
+                .document(chatId)
+                .collection("messages")
+                .document(messageId)
+                .setData(messageData)
+            
+            try await appState.db
+                .collection("chats")
+                .document(chatId)
+                .updateData([
+                    "lastMessage": "📷 תמונה",
+                    "lastMessageTime": Timestamp()
+                ])
+                
+        } catch {
+            print("Photo upload error: \(error)")
         }
+        
+        await MainActor.run { isUploadingPhoto = false }
     }
 }
 
@@ -524,7 +616,7 @@ struct ChatDetailView: View {
 struct ChatBubbleView: View {
     let msg: ChatMessage
     let currentUserId: String?
-    @State private var showingLightbox = false
+    @Binding var selectedLightboxURL: String?
     
     var isMine: Bool {
         msg.senderId == currentUserId
@@ -557,48 +649,37 @@ struct ChatBubbleView: View {
                 .clipShape(RoundedCorner(radius: 16, corners: isMine ? [.topLeft, .topRight, .bottomLeft] : [.topLeft, .topRight, .bottomRight]))
                 if !isMine { Spacer() }
             }
-        } else if msg.type == "photo" {
+        } else if msg.type == "photo", let photoURL = msg.photoURL, let url = URL(string: photoURL) {
             HStack {
                 if isMine { Spacer() }
-                ZStack {
-                    if let url = msg.photoURL {
-                        AsyncImage(url: URL(string: url)) { phase in
-                            if let img = phase.image {
-                                img.resizable().aspectRatio(contentMode: .fill)
-                            } else {
-                                ProgressView()
-                            }
-                        }
+                
+                AsyncImage(url: url) { phase in
+                    if let image = phase.image {
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 200, height: 200)
+                            .clipped()
+                            .cornerRadius(16)
+                    } else if phase.error != nil {
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.gray.opacity(0.3))
+                            .frame(width: 200, height: 200)
+                            .overlay(
+                                Image(systemName: "photo")
+                                    .foregroundColor(.gray)
+                            )
+                    } else {
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(width: 200, height: 200)
+                            .overlay(ProgressView())
                     }
                 }
-                .frame(width: 200, height: 200)
-                .clipShape(RoundedCorner(radius: 16, corners: isMine ? [.topLeft, .topRight, .bottomLeft] : [.topLeft, .topRight, .bottomRight]))
-                .onTapGesture { showingLightbox = true }
-                .fullScreenCover(isPresented: $showingLightbox) {
-                    ZStack {
-                        Color.black.opacity(0.85).edgesIgnoringSafeArea(.all)
-                        VStack {
-                            HStack {
-                                Button(action: { showingLightbox = false }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.title)
-                                        .foregroundColor(.white)
-                                }
-                                .padding()
-                                Spacer()
-                            }
-                            Spacer()
-                            if let url = msg.photoURL {
-                                AsyncImage(url: URL(string: url)) { phase in
-                                    if let img = phase.image {
-                                        img.resizable().aspectRatio(contentMode: .fit)
-                                    }
-                                }
-                            }
-                            Spacer()
-                        }
-                    }
+                .onTapGesture {
+                    selectedLightboxURL = photoURL
                 }
+                
                 if !isMine { Spacer() }
             }
         } else {
@@ -867,6 +948,44 @@ struct ChatUserProfileView: View {
                 self.lastDoc = docs.last
                 self.hasMorePhotos = docs.count == 5
             }
+    }
+}
+
+// MARK: - Chat Image Picker
+struct ChatImagePicker: UIViewControllerRepresentable {
+    let sourceType: UIImagePickerController.SourceType
+    let onImageSelected: (UIImage) -> Void
+    
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = sourceType
+        picker.delegate = context.coordinator
+        return picker
+    }
+    
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onImageSelected: onImageSelected)
+    }
+    
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let onImageSelected: (UIImage) -> Void
+        
+        init(onImageSelected: @escaping (UIImage) -> Void) {
+            self.onImageSelected = onImageSelected
+        }
+        
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            if let image = info[.originalImage] as? UIImage {
+                onImageSelected(image)
+            }
+            picker.dismiss(animated: true)
+        }
+        
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            picker.dismiss(animated: true)
+        }
     }
 }
 
