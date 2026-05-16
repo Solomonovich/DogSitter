@@ -607,11 +607,6 @@ struct ChatBubbleView: View {
                 if isMine { Spacer() }
                 
                 VStack(alignment: isMine ? .trailing : .leading, spacing: 4) {
-                    if !isMine {
-                        Text(msg.senderName)
-                            .font(.system(size: 12))
-                            .foregroundColor(.gray)
-                    }
                     Text(msg.text)
                         .padding(12)
                         .background(isMine ? Color(red: 0.29, green: 0.56, blue: 0.85) : Color(white: 0.94))
