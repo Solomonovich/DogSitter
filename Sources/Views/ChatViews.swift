@@ -314,6 +314,7 @@ struct ChatDetailView: View {
     
     @State private var showDeleteAlert = false
     @State private var messageToDelete: ChatMessage? = nil
+    @State private var hasInitialScrolled = false
     
     var otherName: String {
         appState.currentUserRole == .owner ? chatWrapper.chat.sitterName : chatWrapper.chat.ownerName
@@ -339,6 +340,7 @@ struct ChatDetailView: View {
                                             }
                                         }
                                     }
+                                    .id(msg.id ?? "")
                             }
                         }
                         .padding()
@@ -347,10 +349,37 @@ struct ChatDetailView: View {
                     .onTapGesture {
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     }
-                    .onChange(of: messages.count) { _, _ in
-                        if let last = messages.last?.id {
+                    .onChange(of: messages.count) { _, newCount in
+                        guard let last = messages.last?.id else { return }
+                        if !hasInitialScrolled && newCount > 0 {
+                            hasInitialScrolled = true
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                proxy.scrollTo(last, anchor: .bottom)
+                            }
+                        } else {
                             withAnimation { proxy.scrollTo(last, anchor: .bottom) }
                         }
+                    }
+                    .onAppear {
+                        if !messages.isEmpty && !hasInitialScrolled {
+                            hasInitialScrolled = true
+                            if let lastId = messages.last?.id {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    proxy.scrollTo(lastId, anchor: .bottom)
+                                }
+                            }
+                        }
+                    }
+                }
+                .overlay {
+                    if showAttachmentMenu {
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    showAttachmentMenu = false
+                                }
+                            }
                     }
                 }
                 
@@ -463,16 +492,6 @@ struct ChatDetailView: View {
                         }
                     }
                     }
-            
-            if showAttachmentMenu {
-                Color.clear
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            showAttachmentMenu = false
-                        }
-                    }
-            }
             
             if let urlString = selectedLightboxURL,
                let url = URL(string: urlString) {
