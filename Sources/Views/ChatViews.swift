@@ -445,40 +445,7 @@ struct ChatDetailView: View {
                         .padding(.trailing, 16)
                         }
                     }
-            .confirmationDialog(
-                "בחר תמונה",
-                isPresented: $showingSourceDialog,
-                titleVisibility: .visible
-            ) {
-                Button("צלם תמונה") {
-                    activeSheet = .imagePicker(.camera)
-                }
-                Button("בחר מגלריה") {
-                    activeSheet = .imagePicker(.photoLibrary)
-                }
-                Button("ביטול", role: .cancel) {}
-            }
-            .sheet(item: $activeSheet) { sheet in
-                let _ = print("DEBUG: sheet opening with \(sheet.id)")
-                switch sheet {
-                case .userProfile:
-                    ChatUserProfileView(
-                        otherUserId: appState.currentUserRole == .owner ? chatWrapper.chat.sitterId : chatWrapper.chat.ownerId,
-                        chatId: chatWrapper.id,
-                        isApproved: chatWrapper.chat.approved
-                    )
-                case .imagePicker(let sourceType):
-                    ChatImagePicker(
-                        sourceType: sourceType,
-                        onImageSelected: { image in
-                            activeSheet = nil
-                            Task {
-                                await sendPhotoMessage(image: image)
-                            }
-                        }
-                    )
-                }
-            }
+                    }
             
             if showAttachmentMenu {
                 Color.clear
@@ -523,6 +490,39 @@ struct ChatDetailView: View {
                 .transition(.opacity)
             }
         }
+        .confirmationDialog(
+            "בחר תמונה",
+            isPresented: $showingSourceDialog,
+            titleVisibility: .visible
+        ) {
+            Button("צלם תמונה") {
+                activeSheet = .imagePicker(.camera)
+            }
+            Button("בחר מגלריה") {
+                activeSheet = .imagePicker(.photoLibrary)
+            }
+            Button("ביטול", role: .cancel) {}
+        }
+        .sheet(item: $activeSheet) { sheet in
+            let _ = print("DEBUG: sheet opening with \(sheet.id)")
+            switch sheet {
+            case .userProfile:
+                ChatUserProfileView(
+                    otherUserId: appState.currentUserRole == .owner ? chatWrapper.chat.sitterId : chatWrapper.chat.ownerId,
+                    chatId: chatWrapper.id,
+                    isApproved: chatWrapper.chat.approved
+                )
+            case .imagePicker(let sourceType):
+                ChatImagePicker(
+                    sourceType: sourceType,
+                    onImageSelected: { image in
+                        activeSheet = nil
+                        Task {
+                            await sendPhotoMessage(image: image)
+                        }
+                    }
+                )
+            }
         }
         .environment(\.layoutDirection, .rightToLeft)
         .navigationTitle(otherName)
