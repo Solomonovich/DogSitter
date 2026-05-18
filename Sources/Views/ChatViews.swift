@@ -312,6 +312,9 @@ struct ChatDetailView: View {
     
     @State private var otherUserFullProfile: User?
     
+    @State private var showDeleteAlert = false
+    @State private var messageToDelete: ChatMessage? = nil
+    
     var otherName: String {
         appState.currentUserRole == .owner ? chatWrapper.chat.sitterName : chatWrapper.chat.ownerName
     }
@@ -326,9 +329,23 @@ struct ChatDetailView: View {
                         LazyVStack(spacing: 12) {
                             ForEach(messages) { msg in
                                 ChatBubbleView(msg: msg, currentUserId: appState.currentUser?.id, selectedLightboxURL: $selectedLightboxURL)
+                                    .contextMenu {
+                                        if msg.senderId == appState.currentUser?.id {
+                                            Button(role: .destructive) {
+                                                messageToDelete = msg
+                                                showDeleteAlert = true
+                                            } label: {
+                                                Label("מחק הודעה", systemImage: "trash")
+                                            }
+                                        }
+                                    }
                             }
                         }
                         .padding()
+                    }
+                    .scrollDismissesKeyboard(.interactively)
+                    .onTapGesture {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     }
                     .onChange(of: messages.count) { _, _ in
                         if let last = messages.last?.id {
@@ -523,6 +540,34 @@ struct ChatDetailView: View {
                     }
                 )
             }
+        }
+        .alert("מחק הודעה", isPresented: $showDeleteAlert) {
+            Button("מחק", role: .destructive) {
+                if let msg = messageToDelete,
+                   let msgId = msg.id,
+                   let chatId = chatWrapper.chat.id {
+                    Task {
+                        try? await appState.db
+                            .collection("chats")
+                            .document(chatId)
+                            .collection("messages")
+                            .document(msgId)
+                            .delete()
+                            
+                        if msgId == messages.last?.id {
+                            try? await appState.db
+                                .collection("chats")
+                                .document(chatId)
+                                .updateData([
+                                    "lastMessage": "ההודעה נמחקה"
+                                ])
+                        }
+                    }
+                }
+            }
+            Button("ביטול", role: .cancel) {}
+        } message: {
+            Text("האם אתה בטוח שברצונך למחוק את ההודעה?")
         }
         .environment(\.layoutDirection, .rightToLeft)
         .navigationTitle(otherName)
