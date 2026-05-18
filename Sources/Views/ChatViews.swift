@@ -290,15 +290,27 @@ struct ChatDetailView: View {
     @State private var messages: [ChatMessage] = []
     @State private var listener: ListenerRegistration?
     
+    enum ActiveSheet: Identifiable {
+        case userProfile
+        case imagePicker(UIImagePickerController.SourceType)
+        
+        var id: String {
+            switch self {
+            case .userProfile: return "userProfile"
+            case .imagePicker(let source): 
+                return source == .camera ? "camera" : "gallery"
+            }
+        }
+    }
+    
+    @State private var activeSheet: ActiveSheet? = nil
+    @State private var showingSourceDialog = false
+    
     @State private var showAttachmentMenu = false
-    @State private var showingImagePicker = false
-    @State private var imagePickerSource: UIImagePickerController.SourceType = .photoLibrary
-    @State private var showingImageSourceDialog = false
     @State private var isUploadingPhoto = false
     @State private var selectedLightboxURL: String? = nil
     
     @State private var otherUserFullProfile: User?
-    @State private var showingUserProfile = false
     
     var otherName: String {
         appState.currentUserRole == .owner ? chatWrapper.chat.sitterName : chatWrapper.chat.ownerName
@@ -326,9 +338,8 @@ struct ChatDetailView: View {
                 }
                 
                 // Input Bar
-                ZStack(alignment: .bottomTrailing) {
-                    VStack(spacing: 0) {
-                        Divider()
+                VStack(spacing: 0) {
+                    Divider()
                         
                         if isUploadingPhoto {
                             HStack {
@@ -389,9 +400,9 @@ struct ChatDetailView: View {
                         .padding(.vertical, 8)
                         .background(Color.white)
                     }
-                    
-                    if showAttachmentMenu {
-                        VStack(spacing: 12) {
+                    .overlay(alignment: .bottomTrailing) {
+                        if showAttachmentMenu {
+                            VStack(spacing: 12) {
                             Button(action: {
                                 showAttachmentMenu = false
                                 if let cid = chatWrapper.chat.id {
@@ -414,7 +425,7 @@ struct ChatDetailView: View {
                             
                             Button(action: {
                                 showAttachmentMenu = false
-                                showingImageSourceDialog = true
+                                showingSourceDialog = true
                             }) {
                                 HStack {
                                     Text("הוסף תמונה")
@@ -432,7 +443,40 @@ struct ChatDetailView: View {
                         }
                         .padding(.bottom, 60)
                         .padding(.trailing, 16)
+                        }
                     }
+            .confirmationDialog(
+                "בחר תמונה",
+                isPresented: $showingSourceDialog,
+                titleVisibility: .visible
+            ) {
+                Button("צלם תמונה") {
+                    activeSheet = .imagePicker(.camera)
+                }
+                Button("בחר מגלריה") {
+                    activeSheet = .imagePicker(.photoLibrary)
+                }
+                Button("ביטול", role: .cancel) {}
+            }
+            .sheet(item: $activeSheet) { sheet in
+                let _ = print("DEBUG: sheet opening with \(sheet.id)")
+                switch sheet {
+                case .userProfile:
+                    ChatUserProfileView(
+                        otherUserId: appState.currentUserRole == .owner ? chatWrapper.chat.sitterId : chatWrapper.chat.ownerId,
+                        chatId: chatWrapper.id,
+                        isApproved: chatWrapper.chat.approved
+                    )
+                case .imagePicker(let sourceType):
+                    ChatImagePicker(
+                        sourceType: sourceType,
+                        onImageSelected: { image in
+                            activeSheet = nil
+                            Task {
+                                await sendPhotoMessage(image: image)
+                            }
+                        }
+                    )
                 }
             }
             
@@ -479,6 +523,7 @@ struct ChatDetailView: View {
                 .transition(.opacity)
             }
         }
+        }
         .environment(\.layoutDirection, .rightToLeft)
         .navigationTitle(otherName)
         .navigationBarTitleDisplayMode(.inline)
@@ -494,7 +539,7 @@ struct ChatDetailView: View {
             }
             ToolbarItem(placement: .navigationBarLeading) {
                 Button(action: {
-                    showingUserProfile = true
+                    activeSheet = .userProfile
                 }) {
                     AsyncImage(url: URL(string: appState.currentUserRole == .owner ? (chatWrapper.chat.sitterPhotoURL ?? "") : (chatWrapper.chat.ownerPhotoURL ?? ""))) { phase in
                         if let img = phase.image {
@@ -514,31 +559,6 @@ struct ChatDetailView: View {
         }
         .onDisappear {
             listener?.remove()
-        }
-        .confirmationDialog("בחר תמונה", isPresented: $showingImageSourceDialog) {
-            Button("צלם תמונה") {
-                imagePickerSource = .camera
-                showingImagePicker = true
-            }
-            Button("בחר מגלריה") {
-                imagePickerSource = .photoLibrary
-                showingImagePicker = true
-            }
-            Button("ביטול", role: .cancel) {}
-        }
-        .sheet(isPresented: $showingImagePicker) {
-            ChatImagePicker(
-                sourceType: imagePickerSource,
-                onImageSelected: { image in
-                    showingImagePicker = false
-                    Task {
-                        await sendPhotoMessage(image: image)
-                    }
-                }
-            )
-        }
-        .sheet(isPresented: $showingUserProfile) {
-            ChatUserProfileView(otherUserId: appState.currentUserRole == .owner ? chatWrapper.chat.sitterId : chatWrapper.chat.ownerId, chatId: chatWrapper.id, isApproved: chatWrapper.chat.approved)
         }
     }
     
