@@ -1,5 +1,6 @@
 import SwiftUI
 import FirebaseFirestore
+import MapKit
 
 struct ChatsListView: View {
     @EnvironmentObject var appState: AppState
@@ -316,6 +317,13 @@ struct ChatDetailView: View {
     @State private var messageToDelete: ChatMessage? = nil
     @State private var hasInitialScrolled = false
     
+    struct WalkIdentifier: Identifiable {
+        let id: String
+    }
+    
+    @State private var showingPreWalk = false
+    @State private var walkToOpen: WalkIdentifier? = nil
+    
     var otherName: String {
         appState.currentUserRole == .owner ? chatWrapper.chat.sitterName : chatWrapper.chat.ownerName
     }
@@ -329,7 +337,9 @@ struct ChatDetailView: View {
                     ScrollView {
                         LazyVStack(spacing: 12) {
                             ForEach(messages) { msg in
-                                ChatBubbleView(msg: msg, currentUserId: appState.currentUser?.id, selectedLightboxURL: $selectedLightboxURL)
+                                ChatBubbleView(msg: msg, currentUserId: appState.currentUser?.id, selectedLightboxURL: $selectedLightboxURL) { walkId in
+                                    self.walkToOpen = WalkIdentifier(id: walkId)
+                                }
                                     .contextMenu {
                                         if msg.senderId == appState.currentUser?.id {
                                             Button(role: .destructive) {
@@ -451,9 +461,7 @@ struct ChatDetailView: View {
                             VStack(spacing: 12) {
                             Button(action: {
                                 showAttachmentMenu = false
-                                if let cid = chatWrapper.chat.id {
-                                    Task { await appState.sendWalkMessage(chatId: cid) }
-                                }
+                                showingPreWalk = true
                             }) {
                                 HStack {
                                     Text("הוסף הליכה")
@@ -621,6 +629,14 @@ struct ChatDetailView: View {
             setupMessageListener()
             fetchOtherUser()
         }
+        .fullScreenCover(isPresented: $showingPreWalk) {
+            PreWalkView(chat: chatWrapper.chat)
+        }
+        .fullScreenCover(item: $walkToOpen) { walkIdentifier in
+            if let cid = chatWrapper.chat.id {
+                WalkFullView(walkId: walkIdentifier.id, chatId: cid, isSitter: appState.currentUserRole == .sitter)
+            }
+        }
         .onDisappear {
             listener?.remove()
         }
@@ -701,6 +717,7 @@ struct ChatBubbleView: View {
     let msg: ChatMessage
     let currentUserId: String?
     @Binding var selectedLightboxURL: String?
+    var onTapWalk: ((String) -> Void)? = nil
     
     var isMine: Bool {
         msg.senderId == currentUserId
@@ -717,22 +734,11 @@ struct ChatBubbleView: View {
                 .cornerRadius(16)
                 .frame(maxWidth: .infinity, alignment: .center)
         } else if msg.type == "walk" {
-            HStack {
-                if isMine { Spacer() }
-                VStack(alignment: .trailing, spacing: 4) {
-                    HStack {
-                        Text(msg.text).bold()
-                        Image(systemName: "pawprint.fill")
-                    }
-                    Text("פיצ'ר זה יגיע בקרוב")
-                        .font(.system(size: 12))
+            WalkBubbleContent(msg: msg, isMine: isMine, onTap: {
+                if let wid = msg.walkId {
+                    onTapWalk?(wid)
                 }
-                .padding(16)
-                .background(Color(red: 0.8, green: 0.9, blue: 1.0))
-                .foregroundColor(Color(white: 0.1))
-                .clipShape(RoundedCorner(radius: 16, corners: isMine ? [.topLeft, .topRight, .bottomLeft] : [.topLeft, .topRight, .bottomRight]))
-                if !isMine { Spacer() }
-            }
+            })
         } else if msg.type == "photo", let photoURL = msg.photoURL, let url = URL(string: photoURL) {
             HStack {
                 if isMine { Spacer() }
@@ -1073,3 +1079,139 @@ struct ChatImagePicker: UIViewControllerRepresentable {
     }
 }
 
+// MARK: - Walk Bubble Content
+struct WalkBubbleContent: View {
+    let msg: ChatMessage
+    let isMine: Bool
+    var onTap: () -> Void
+    
+    // Live update state
+    @State private var liveWalk: Walk?
+    @EnvironmentObject var appState: AppState
+    
+    @State private var timerActive = false
+    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    @State private var activeDuration: Double = 0.0
+    
+    var body: some View {
+        let status = liveWalk?.status ?? msg.status ?? "active"
+        let distance = liveWalk?.distance ?? msg.distance ?? 0.0
+        let startTime = liveWalk?.startTime.dateValue() ?? msg.startTime?.dateValue() ?? Date()
+        let startAddress = liveWalk?.startAddress ?? msg.startAddress ?? ""
+        
+        Button(action: onTap) {
+            if status == "completed" {
+                // SCREEN 4 — FINISHED WALK CHAT BUBBLE
+                VStack(spacing: 0) {
+                    WalkMapView(walk: liveWalk, tracker: LocationTracker(), region: .constant(MKCoordinateRegion()))
+                        .frame(height: 150)
+                        .disabled(true)
+                    
+                    HStack {
+                        Text("\(startTime.formatted(date: .omitted, time: .shortened)) -התחיל ב")
+                            .font(.caption)
+                        Spacer()
+                        Divider()
+                        Spacer()
+                        Text(String(format: "מרחק - %.2f", distance))
+                            .font(.caption)
+                    }
+                    .padding()
+                    .background(Color(hex: "#9E9E9E").opacity(0.3))
+                }
+                .frame(width: 280)
+                .background(Color.white)
+                .cornerRadius(16)
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(hex: "#4A90D9"), lineWidth: 2))
+                .padding(.vertical, 4)
+            } else if isMine {
+                // SCREEN 2 — ACTIVE WALK CHAT BUBBLE (Sitter)
+                VStack(alignment: .trailing, spacing: 8) {
+                    Text(formatDuration(minutes: activeDuration))
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.white)
+                    
+                    Text("הותחל ב- \(startTime.formatted(date: .omitted, time: .shortened))")
+                        .font(.caption)
+                        .foregroundColor(.white)
+                    
+                    Button(action: onTap) {
+                        Text("סיים ההליכה")
+                            .foregroundColor(.red)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(Color.white)
+                            .cornerRadius(8)
+                    }
+                }
+                .padding()
+                .frame(width: 260)
+                .background(Color(hex: "#4A90D9"))
+                .cornerRadius(16)
+            } else {
+                // SCREEN 3 — ACTIVE WALK CHAT BUBBLE (Owner)
+                VStack(spacing: 0) {
+                    VStack(spacing: 4) {
+                        Text(formatDuration(minutes: activeDuration))
+                            .font(.system(size: 40, weight: .bold))
+                            .foregroundColor(Color(hex: "#4A90D9"))
+                        
+                        HStack {
+                            Text(startAddress)
+                                .font(.system(size: 13))
+                                .foregroundColor(.gray)
+                            Image(systemName: "mappin.and.ellipse")
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    .padding()
+                    
+                    HStack {
+                        Text("\(startTime.formatted(date: .omitted, time: .shortened)) -הותחל ב")
+                            .font(.caption)
+                        Spacer()
+                        Divider()
+                        Spacer()
+                        Text(String(format: "מרחק %.2f ק״מ", distance))
+                            .font(.caption)
+                    }
+                    .padding()
+                    .background(Color(hex: "#9E9E9E").opacity(0.3))
+                }
+                .frame(width: 260)
+                .background(Color(hex: "#E3F2FD"))
+                .cornerRadius(16)
+            }
+        }
+        .buttonStyle(PlainButtonStyle())
+        .onAppear {
+            if let walkId = msg.walkId {
+                // Simple fetch for simplicity
+                Task {
+                    if let doc = try? await appState.db.collection("walks").document(walkId).getDocument(as: Walk.self) {
+                        liveWalk = doc
+                        if doc.status == "active" {
+                            timerActive = true
+                        }
+                    }
+                }
+            } else {
+                if msg.status != "completed" {
+                    timerActive = true
+                }
+            }
+        }
+        .onReceive(timer) { _ in
+            if timerActive {
+                let start = liveWalk?.startTime.dateValue() ?? msg.startTime?.dateValue() ?? Date()
+                activeDuration = Date().timeIntervalSince(start) / 60.0
+            }
+        }
+    }
+    
+    private func formatDuration(minutes: Double) -> String {
+        let m = Int(minutes)
+        let s = Int((minutes - Double(m)) * 60)
+        return String(format: "%02d:%02d", m, s)
+    }
+}

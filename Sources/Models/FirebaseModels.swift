@@ -54,6 +54,12 @@ struct GeoCoordinate: Codable, Hashable {
     let timestamp: Timestamp?
 }
 
+struct WalkCoordinate: Codable, Hashable {
+    let latitude: Double
+    let longitude: Double
+    let timestamp: Timestamp
+}
+
 // MARK: - Collections
 
 struct User: Identifiable, Codable {
@@ -188,6 +194,17 @@ struct ChatMessage: Identifiable, Codable {
     var type: String // "text", "photo", "walk", "payment"
     var photoURL: String?
     var walkId: String?
+    
+    // Walk specific fields
+    var status: String? // "active" or "completed"
+    var startTime: Timestamp?
+    var endTime: Timestamp?
+    var distance: Double?
+    var duration: Double?
+    var startAddress: String?
+    var coordinates: [WalkCoordinate]?
+    var photoURLs: [String]?
+    
     @ServerTimestamp var createdAt: Timestamp?
 }
 
@@ -209,10 +226,13 @@ struct Walk: Identifiable, Codable {
     var postId: String
     var sitterId: String
     var ownerId: String
-    var startTime: Timestamp?
-    var endTime: Timestamp?
-    var distance: Double? // kilometers/meters
-    var duration: Int? // seconds
-    var coordinates: [GeoCoordinate]
     var status: String // "active" or "completed"
+    var startTime: Timestamp
+    var endTime: Timestamp?
+    var distance: Double // kilometers
+    var duration: Double // minutes
+    var startAddress: String
+    var coordinates: [WalkCoordinate]
+    var photoURLs: [String]
+    var messageId: String
 }

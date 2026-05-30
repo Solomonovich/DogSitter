@@ -1,57 +1,66 @@
 import Foundation
 import CoreLocation
+import Combine
 
 class LocationTracker: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
     
-    @Published var lastLocation: CLLocation?
-    @Published var walkRoute: [CLLocationCoordinate2D] = []
-    @Published var walkDistanceKm: Double = 0.0
+    @Published var currentLocation: CLLocation?
+    @Published var coordinates: [CLLocationCoordinate2D] = []
+    @Published var totalDistance: Double = 0.0 // kilometers
+    @Published var isTracking: Bool = false
     
     override init() {
         super.init()
         manager.delegate = self
         manager.desiredAccuracy = kCLLocationAccuracyBest
+        manager.distanceFilter = 10 // meters
         manager.activityType = .fitness
     }
     
-    func requestAuth() {
+    func requestPermission() {
         manager.requestWhenInUseAuthorization()
-        // Provide a default fallback location immediately (Tel Aviv) for mock testing if not available
-        lastLocation = CLLocation(latitude: 32.0853, longitude: 34.7818)
     }
     
-    func startWalk() {
-        walkRoute.removeAll()
-        walkDistanceKm = 0.0
+    func startTracking() {
+        coordinates.removeAll()
+        totalDistance = 0.0
+        isTracking = true
         manager.startUpdatingLocation()
-        print("Started Walk")
+        print("Started Location Tracking")
     }
     
-    func stopWalk() {
+    func stopTracking() {
+        isTracking = false
         manager.stopUpdatingLocation()
-        print("Stopped Walk")
+        print("Stopped Location Tracking")
     }
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
-        lastLocation = location
         
         // Mock filter to prevent crazy jumps during simulation
         if location.horizontalAccuracy > 65 { return }
         
+        // Ignore old cached locations
+        if location.timestamp.timeIntervalSinceNow < -5.0 { return }
+        
+        currentLocation = location
+        
+        guard isTracking else { return }
+        
         let newCoord = location.coordinate
         
-        if let last = walkRoute.last {
-            let lastLoc = CLLocation(latitude: last.latitude, longitude: last.longitude)
-            let distance = location.distance(from: lastLoc)
-            // Add distance only if movement is reasonable (ignore 0)
-            if distance > 1 {
-                walkDistanceKm += distance / 1000.0
-                walkRoute.append(newCoord)
+        if let lastCoord = coordinates.last {
+            let lastLoc = CLLocation(latitude: lastCoord.latitude, longitude: lastCoord.longitude)
+            let distanceMeters = location.distance(from: lastLoc)
+            // Add distance only if movement is reasonable (ignore tiny shifts)
+            if distanceMeters > 1 {
+                totalDistance += (distanceMeters / 1000.0) // Convert to km
+                coordinates.append(newCoord)
             }
         } else {
-            walkRoute.append(newCoord)
+            coordinates.append(newCoord)
         }
     }
 }

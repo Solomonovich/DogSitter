@@ -17,12 +17,13 @@
 		3CCD42B0ACCEA046CAF4F06C /* CreatePostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3695B4344339980C1ED5ED6 /* CreatePostView.swift */; };
 		47382124E463F45B3F9880B6 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 399456D5AC5F8B0594AE715F /* GoogleService-Info.plist */; };
 		4C5948B29084A1CDB9DF52B9 /* SignUpView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0897B76478E5FE981589E1E4 /* SignUpView.swift */; };
-		4CB3EFFD2B188AF12D62E9A2 /* WalkViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A31049115B101A3FE7D18B15 /* WalkViews.swift */; };
 		5860E8FD504A1006F33C3A13 /* OwnerViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4C752B72E4AD922787ECD20 /* OwnerViews.swift */; };
 		5B3055A66965F3DB5E324BCA /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8697E144AEA2D70846C9C6F9 /* AppState.swift */; };
 		67916E8CEEAAD7A25708A9C5 /* SocialAuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1AE67C23617816B65B2E277 /* SocialAuthManager.swift */; };
+		6874591450772094BA1E23A7 /* WalkFullView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BF61965F11D5E78BF238035 /* WalkFullView.swift */; };
 		68973CA990D24A3178BEA821 /* SitterHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D6739812DDF4937B0C80BD3 /* SitterHomeView.swift */; };
 		6BCAC4B856B8243C9AD23EBF /* ImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B63633FBF9AB6F2D0E52C8F7 /* ImagePicker.swift */; };
+		6D43DEB9CB1A4584E4EC3466 /* PreWalkView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2891C087188B930571A986A7 /* PreWalkView.swift */; };
 		821CC5261E7DFA74A225424A /* SitterProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43A15FD047A8E9601C5D3313 /* SitterProfileView.swift */; };
 		899AFE93A8AF5A396EFA0511 /* AuthErrorHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 955C6BACAF7D42FE5F4468B9 /* AuthErrorHandler.swift */; };
 		89A5FDE1F8C08BCBC315CC32 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 1CCFF6FCA40FAA5CE29461C6 /* FirebaseAnalytics */; };
@@ -45,8 +46,10 @@
 /* Begin PBXFileReference section */
 		00B35865A6F5DE261821719A /* DogSitterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DogSitterApp.swift; sourceTree = "<group>"; };
 		0897B76478E5FE981589E1E4 /* SignUpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignUpView.swift; sourceTree = "<group>"; };
+		1BF61965F11D5E78BF238035 /* WalkFullView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WalkFullView.swift; sourceTree = "<group>"; };
 		1C8219BB1F237B61F50E86C5 /* SocialRoleSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialRoleSelectionView.swift; sourceTree = "<group>"; };
 		1D6739812DDF4937B0C80BD3 /* SitterHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SitterHomeView.swift; sourceTree = "<group>"; };
+		2891C087188B930571A986A7 /* PreWalkView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PreWalkView.swift; sourceTree = "<group>"; };
 		2CC5DC54778C5623F24B24DF /* DogSitter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DogSitter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		390A9ED34CB48BCA1A47AFB9 /* MapContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapContainerView.swift; sourceTree = "<group>"; };
 		399456D5AC5F8B0594AE715F /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
@@ -58,7 +61,6 @@
 		78322BB9F2E3FC9FD5974710 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		8697E144AEA2D70846C9C6F9 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		955C6BACAF7D42FE5F4468B9 /* AuthErrorHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthErrorHandler.swift; sourceTree = "<group>"; };
-		A31049115B101A3FE7D18B15 /* WalkViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkViews.swift; sourceTree = "<group>"; };
 		A3695B4344339980C1ED5ED6 /* CreatePostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreatePostView.swift; sourceTree = "<group>"; };
 		AA302B84A8D72480C4D9F389 /* ChatViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViews.swift; sourceTree = "<group>"; };
 		B0CE113F642431B82F82F801 /* AddressSearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressSearchService.swift; sourceTree = "<group>"; };
@@ -197,7 +199,8 @@
 				1D6739812DDF4937B0C80BD3 /* SitterHomeView.swift */,
 				43A15FD047A8E9601C5D3313 /* SitterProfileView.swift */,
 				1C8219BB1F237B61F50E86C5 /* SocialRoleSelectionView.swift */,
-				A31049115B101A3FE7D18B15 /* WalkViews.swift */,
+				2891C087188B930571A986A7 /* PreWalkView.swift */,
+				1BF61965F11D5E78BF238035 /* WalkFullView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -297,12 +300,13 @@
 				821CC5261E7DFA74A225424A /* SitterProfileView.swift in Sources */,
 				67916E8CEEAAD7A25708A9C5 /* SocialAuthManager.swift in Sources */,
 				E10455F18F26A1D6895AD89D /* SocialRoleSelectionView.swift in Sources */,
-				4CB3EFFD2B188AF12D62E9A2 /* WalkViews.swift in Sources */,
 				15A8BC0E2A8400C7A197A00D /* AuthHelpers.swift in Sources */,
 				249B9D695BB2BD8C2165C63B /* AddressAutocompleteView.swift in Sources */,
 				D8E6C0A8BDD0D2247EADAE16 /* EditPostView.swift in Sources */,
 				1F56F2F6369A27CF01174EFF /* CloudinaryHelper.swift in Sources */,
 				6BCAC4B856B8243C9AD23EBF /* ImagePicker.swift in Sources */,
+				6D43DEB9CB1A4584E4EC3466 /* PreWalkView.swift in Sources */,
+				6874591450772094BA1E23A7 /* WalkFullView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

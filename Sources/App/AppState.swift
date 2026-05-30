@@ -437,4 +437,135 @@ class AppState: ObservableObject {
             "lastMessageTime": FieldValue.serverTimestamp()
         ])
     }
+    
+    // MARK: - Walk API
+    
+    func startWalk(chatId: String, postId: String, startAddress: String) async -> String? {
+        guard let user = currentUser, let uid = user.id else { return nil }
+        // Determine ownerId by finding the chat.
+        var ownerId = ""
+        if let chat = try? await db.collection("chats").document(chatId).getDocument(as: Chat.self) {
+            ownerId = chat.ownerId
+        }
+        
+        let walkRef = db.collection("walks").document()
+        let walkId = walkRef.documentID
+        
+        let messageRef = db.collection("chats").document(chatId).collection("messages").document()
+        let messageId = messageRef.documentID
+        
+        let newWalk = Walk(
+            id: walkId,
+            chatId: chatId,
+            postId: postId,
+            sitterId: uid,
+            ownerId: ownerId,
+            status: "active",
+            startTime: Timestamp(),
+            endTime: nil,
+            distance: 0.0,
+            duration: 0.0,
+            startAddress: startAddress,
+            coordinates: [],
+            photoURLs: [],
+            messageId: messageId
+        )
+        
+        let walkMsg = ChatMessage(
+            id: messageId,
+            senderId: uid,
+            senderName: user.name,
+            text: "🐾 הליכה התחילה!",
+            type: "walk",
+            walkId: walkId,
+            status: "active",
+            startTime: newWalk.startTime,
+            distance: 0.0,
+            duration: 0.0,
+            startAddress: startAddress,
+            coordinates: [],
+            photoURLs: [],
+            createdAt: Timestamp()
+        )
+        
+        do {
+            try walkRef.setData(from: newWalk)
+            try messageRef.setData(from: walkMsg)
+            try await db.collection("chats").document(chatId).updateData([
+                "lastMessage": "🐾 הליכה התחילה!",
+                "lastMessageTime": FieldValue.serverTimestamp()
+            ])
+            return walkId
+        } catch {
+            print("Error starting walk: \(error)")
+            return nil
+        }
+    }
+    
+    func updateWalkCoordinates(walkId: String, coordinates: [CLLocationCoordinate2D], distance: Double, duration: Double) async {
+        let walkCoords = coordinates.map { WalkCoordinate(latitude: $0.latitude, longitude: $0.longitude, timestamp: Timestamp()) }
+        let walkCoordsDicts = walkCoords.compactMap { try? Firestore.Encoder().encode($0) }
+        
+        do {
+            try await db.collection("walks").document(walkId).updateData([
+                "coordinates": walkCoordsDicts,
+                "distance": distance,
+                "duration": duration
+            ])
+        } catch {
+            print("Error updating walk coordinates: \(error)")
+        }
+    }
+    
+    func stopWalk(walkId: String, messageId: String, chatId: String, finalDistance: Double, finalDuration: Double) async {
+        do {
+            let endTime = Timestamp()
+            
+            try await db.collection("walks").document(walkId).updateData([
+                "status": "completed",
+                "endTime": endTime,
+                "distance": finalDistance,
+                "duration": finalDuration
+            ])
+            
+            try await db.collection("chats").document(chatId).collection("messages").document(messageId).updateData([
+                "status": "completed",
+                "endTime": endTime,
+                "distance": finalDistance,
+                "duration": finalDuration
+            ])
+        } catch {
+            print("Error stopping walk: \(error)")
+        }
+    }
+    
+    func addWalkPhoto(walkId: String, imageURL: String) async {
+        do {
+            try await db.collection("walks").document(walkId).updateData([
+                "photoURLs": FieldValue.arrayUnion([imageURL])
+            ])
+        } catch {
+            print("Error adding walk photo: \(error)")
+        }
+    }
+    
+    func getTotalWalkHoursForChat(chatId: String) async -> String {
+        do {
+            let snap = try await db.collection("walks")
+                .whereField("chatId", isEqualTo: chatId)
+                .whereField("status", isEqualTo: "completed")
+                .getDocuments()
+            
+            let totalMinutes = snap.documents.compactMap { doc -> Double? in
+                return doc.data()["duration"] as? Double
+            }.reduce(0, +)
+            
+            let hours = Int(totalMinutes) / 60
+            let minutes = Int(totalMinutes) % 60
+            return String(format: "%02d:%02d", hours, minutes)
+        } catch {
+            print("Error fetching walk hours: \(error)")
+            return "00:00"
+        }
+    }
 }
