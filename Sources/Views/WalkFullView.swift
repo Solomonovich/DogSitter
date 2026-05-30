@@ -152,7 +152,7 @@ struct WalkFullView: View {
                         }
                         .frame(minHeight: 130)
                         
-                        if isSitter && viewModel.walk?.status == "active" {
+                        if viewModel.walk?.status == "active" {
                             Button(action: stopWalk) {
                                 Text("עצור הליכה")
                                     .bold()
@@ -280,7 +280,8 @@ struct WalkFullView: View {
         if let msgId = viewModel.walk?.messageId {
             Task {
                 await appState.stopWalk(walkId: walkId, messageId: msgId, chatId: chatId, finalDistance: tracker.totalDistance, finalDuration: activeDuration)
-                // Stop UI update timers via states naturally
+                // Dismiss the full-screen view to go back to chat
+                presentationMode.wrappedValue.dismiss()
             }
         }
     }

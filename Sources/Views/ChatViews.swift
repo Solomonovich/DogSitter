@@ -1089,6 +1089,7 @@ struct WalkBubbleContent: View {
     @State private var liveWalk: Walk?
     @EnvironmentObject var appState: AppState
     
+    @State private var walkListener: ListenerRegistration? = nil
     @State private var timerActive = false
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
     @State private var activeDuration: Double = 0.0
@@ -1186,12 +1187,13 @@ struct WalkBubbleContent: View {
         .buttonStyle(PlainButtonStyle())
         .onAppear {
             if let walkId = msg.walkId {
-                // Simple fetch for simplicity
-                Task {
-                    if let doc = try? await appState.db.collection("walks").document(walkId).getDocument(as: Walk.self) {
+                walkListener = appState.db.collection("walks").document(walkId).addSnapshotListener { snapshot, _ in
+                    if let doc = try? snapshot?.data(as: Walk.self) {
                         liveWalk = doc
                         if doc.status == "active" {
                             timerActive = true
+                        } else {
+                            timerActive = false
                         }
                     }
                 }
@@ -1200,6 +1202,9 @@ struct WalkBubbleContent: View {
                     timerActive = true
                 }
             }
+        }
+        .onDisappear {
+            walkListener?.remove()
         }
         .onReceive(timer) { _ in
             if timerActive {
