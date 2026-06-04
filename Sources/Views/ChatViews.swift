@@ -1090,9 +1090,18 @@ struct WalkBubbleContent: View {
     @EnvironmentObject var appState: AppState
     
     @State private var walkListener: ListenerRegistration? = nil
-    @State private var timerActive = false
-    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-    @State private var activeDuration: Double = 0.0
+    @State private var snapshotImage: UIImage? = nil
+    
+    @ObservedObject private var tracker = LocationTracker.shared
+    
+    var activeDuration: Double {
+        if tracker.isTracking {
+            return Double(tracker.elapsedSeconds) / 60.0
+        } else {
+            let start = liveWalk?.startTime.dateValue() ?? msg.startTime?.dateValue() ?? Date()
+            return Date().timeIntervalSince(start) / 60.0
+        }
+    }
     
     var body: some View {
         let status = liveWalk?.status ?? msg.status ?? "active"
@@ -1104,9 +1113,18 @@ struct WalkBubbleContent: View {
             if status == "completed" {
                 // SCREEN 4 — FINISHED WALK CHAT BUBBLE
                 VStack(spacing: 0) {
-                    WalkMapView(walk: liveWalk, tracker: LocationTracker(), region: .constant(MKCoordinateRegion()))
-                        .frame(height: 150)
-                        .disabled(true)
+                    if let img = snapshotImage {
+                        Image(uiImage: img)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(height: 150)
+                            .clipped()
+                    } else {
+                        Rectangle()
+                            .fill(Color(hex: "#E0E0E0"))
+                            .frame(height: 150)
+                            .overlay(ProgressView())
+                    }
                     
                     HStack {
                         Text("\(startTime.formatted(date: .omitted, time: .shortened)) -התחיל ב")
@@ -1125,6 +1143,14 @@ struct WalkBubbleContent: View {
                 .cornerRadius(16)
                 .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(hex: "#4A90D9"), lineWidth: 2))
                 .padding(.vertical, 4)
+                .onAppear {
+                    if snapshotImage == nil {
+                        generateSnapshot()
+                    }
+                }
+                .onChange(of: liveWalk?.coordinates) { _ in
+                    generateSnapshot()
+                }
             } else if isMine {
                 // SCREEN 2 — ACTIVE WALK CHAT BUBBLE (Sitter)
                 VStack(alignment: .trailing, spacing: 8) {
@@ -1190,26 +1216,65 @@ struct WalkBubbleContent: View {
                 walkListener = appState.db.collection("walks").document(walkId).addSnapshotListener { snapshot, _ in
                     if let doc = try? snapshot?.data(as: Walk.self) {
                         liveWalk = doc
-                        if doc.status == "active" {
-                            timerActive = true
-                        } else {
-                            timerActive = false
-                        }
                     }
-                }
-            } else {
-                if msg.status != "completed" {
-                    timerActive = true
                 }
             }
         }
         .onDisappear {
             walkListener?.remove()
         }
-        .onReceive(timer) { _ in
-            if timerActive {
-                let start = liveWalk?.startTime.dateValue() ?? msg.startTime?.dateValue() ?? Date()
-                activeDuration = Date().timeIntervalSince(start) / 60.0
+    }
+    
+    private func generateSnapshot() {
+        var coords: [CLLocationCoordinate2D] = []
+        if let walkCoords = liveWalk?.coordinates, !walkCoords.isEmpty {
+            coords = walkCoords.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
+        } else if let msgCoords = msg.coordinates, !msgCoords.isEmpty {
+            coords = msgCoords.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
+        }
+        
+        guard coords.count > 1 else { return }
+        
+        let polyline = MKPolyline(coordinates: coords, count: coords.count)
+        
+        let options = MKMapSnapshotter.Options()
+        options.region = MKCoordinateRegion(polyline.boundingMapRect)
+        options.size = CGSize(width: 280, height: 160)
+        // Add some padding to the region to ensure the route fits nicely
+        let mapRect = polyline.boundingMapRect
+        let edgePadding = UIEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
+        // MapKit snapshotter doesn't have a direct edgePadding parameter, so we adjust the region
+        
+        let snapshotter = MKMapSnapshotter(options: options)
+        snapshotter.start { snapshot, error in
+            guard let snapshot = snapshot, error == nil else {
+                print("Snapshot error: \(String(describing: error))")
+                return
+            }
+            
+            let image = snapshot.image
+            UIGraphicsBeginImageContextWithOptions(image.size, true, image.scale)
+            image.draw(at: .zero)
+            
+            if let context = UIGraphicsGetCurrentContext() {
+                context.setLineWidth(4.0)
+                context.setStrokeColor(UIColor(red: 74/255, green: 144/255, blue: 217/255, alpha: 1.0).cgColor)
+                
+                let points = coords.map { snapshot.point(for: $0) }
+                if let first = points.first {
+                    context.move(to: first)
+                    for point in points.dropFirst() {
+                        context.addLine(to: point)
+                    }
+                    context.strokePath()
+                }
+            }
+            
+            let finalImage = UIGraphicsGetImageFromCurrentImageContext()
+            UIGraphicsEndImageContext()
+            
+            DispatchQueue.main.async {
+                self.snapshotImage = finalImage
             }
         }
     }

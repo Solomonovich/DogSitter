@@ -7,13 +7,13 @@ struct PreWalkView: View {
     @EnvironmentObject var appState: AppState
     let chat: Chat
     
-    @StateObject private var tracker = LocationTracker()
+    @ObservedObject private var tracker = LocationTracker.shared
     @State private var totalHoursToday: String = "00:00"
     
     // Default region
     @State private var region = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 32.0853, longitude: 34.7818),
-        span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+        span: MKCoordinateSpan(latitudeDelta: 0.009, longitudeDelta: 0.009)
     )
     
     var body: some View {
@@ -105,6 +105,7 @@ struct PreWalkView: View {
         }
         .navigationBarHidden(true)
         .onAppear {
+            tracker.resetTracking()
             tracker.requestPermission()
             Task {
                 if let chatId = chat.id {

@@ -32,7 +32,7 @@ struct WalkFullView: View {
     let isSitter: Bool
     
     @StateObject private var viewModel = WalkViewModel()
-    @StateObject private var tracker = LocationTracker()
+    @ObservedObject private var tracker = LocationTracker.shared
     
     @State private var totalHoursToday: String = "00:00"
     
@@ -40,9 +40,14 @@ struct WalkFullView: View {
     @State private var showingImagePicker = false
     @State private var selectedLightboxURL: String? = nil
     
-    // Timer for active walk
-    @State private var activeDuration: Double = 0.0
-    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    // Computed duration based on the shared tracker or the static completed walk duration
+    var activeDuration: Double {
+        if viewModel.walk?.status == "active" {
+            return Double(tracker.elapsedSeconds) / 60.0
+        } else {
+            return viewModel.walk?.duration ?? 0.0
+        }
+    }
     
     // Upload Timer
     let uploadTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
@@ -240,14 +245,29 @@ struct WalkFullView: View {
         .navigationBarHidden(true)
         .onAppear {
             viewModel.startListening(walkId: walkId, db: appState.db)
-            Task { totalHoursToday = await appState.getTotalWalkHoursForChat(chatId: chatId) }
-            if isSitter { tracker.startTracking() } // Start tracking map live if we open this
-        }
-        .onReceive(timer) { _ in
-            if viewModel.walk?.status == "active", let start = viewModel.walk?.startTime.dateValue() {
-                activeDuration = Date().timeIntervalSince(start) / 60.0
-            } else if let w = viewModel.walk {
-                activeDuration = w.duration
+            Task { 
+                totalHoursToday = await appState.getTotalWalkHoursForChat(chatId: chatId) 
+                
+                // Firestore Syncing logic
+                if let doc = try? await appState.db.collection("walks").document(walkId).getDocument(as: Walk.self) {
+                    let firestoreCoordinates = doc.coordinates.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
+                    
+                    // Run state updates on main thread
+                    await MainActor.run {
+                        if firestoreCoordinates.count > tracker.coordinates.count {
+                            tracker.coordinates = firestoreCoordinates
+                            tracker.totalDistance = doc.distance
+                            
+                            // Synchronize elapsed time with the actual start time
+                            let elapsed = Date().timeIntervalSince(doc.startTime.dateValue())
+                            tracker.elapsedSeconds = Int(elapsed)
+                        }
+                        
+                        if isSitter && doc.status == "active" {
+                            tracker.resumeTracking()
+                        }
+                    }
+                }
             }
         }
         .onReceive(uploadTimer) { _ in
@@ -320,26 +340,39 @@ struct WalkMapView: UIViewRepresentable {
         return map
     }
     
-    func updateUIView(_ uiView: MKMapView, context: Context) {
-        uiView.removeOverlays(uiView.overlays)
+    func updateUIView(_ mapView: MKMapView, context: Context) {
+        // Show user location
+        mapView.showsUserLocation = true
+        
+        // Draw route polyline
+        mapView.removeOverlays(mapView.overlays)
         
         var coords: [CLLocationCoordinate2D] = []
-        
         if walk?.status == "active" && !tracker.coordinates.isEmpty {
             coords = tracker.coordinates
         } else if let walkCoords = walk?.coordinates {
             coords = walkCoords.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
         }
         
-        if !coords.isEmpty {
+        if coords.count > 1 {
             let polyline = MKPolyline(coordinates: coords, count: coords.count)
-            uiView.addOverlay(polyline)
+            mapView.addOverlay(polyline)
             
-            // Zoom to fit
-            var mapRect = polyline.boundingMapRect
-            let edgePadding = UIEdgeInsets(top: 40, left: 40, bottom: 40, right: 40)
-            mapRect = uiView.mapRectThatFits(mapRect, edgePadding: edgePadding)
-            uiView.setRegion(MKCoordinateRegion(mapRect), animated: true)
+            // Zoom to fit route
+            mapView.setVisibleMapRect(
+                polyline.boundingMapRect,
+                edgePadding: UIEdgeInsets(top: 40, left: 40, bottom: 40, right: 40),
+                animated: true
+            )
+        } else if let first = coords.first {
+            // Just center on current location
+            let region = MKCoordinateRegion(
+                center: first,
+                span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
+            )
+            mapView.setRegion(region, animated: true)
+        } else if let trackerRegion = tracker.currentRegion {
+             mapView.setRegion(trackerRegion, animated: true)
         }
     }
     
@@ -356,11 +389,11 @@ struct WalkMapView: UIViewRepresentable {
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
             if let polyline = overlay as? MKPolyline {
                 let renderer = MKPolylineRenderer(polyline: polyline)
-                renderer.strokeColor = UIColor(Color(hex: "#4A90D9"))
+                renderer.strokeColor = UIColor(red: 74/255, green: 144/255, blue: 217/255, alpha: 1.0)
                 renderer.lineWidth = 4
                 return renderer
             }
-            return MKOverlayRenderer()
+            return MKOverlayRenderer(overlay: overlay)
         }
     }
 }
