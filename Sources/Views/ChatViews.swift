@@ -328,6 +328,10 @@ struct ChatDetailView: View {
         appState.currentUserRole == .owner ? chatWrapper.chat.sitterName : chatWrapper.chat.ownerName
     }
     
+    var hasActiveWalk: Bool {
+        messages.contains { $0.type == "walk" && $0.status == "active" }
+    }
+    
     var body: some View {
         ZStack {
             Color(white: 0.98).edgesIgnoringSafeArea(.all)
@@ -459,23 +463,25 @@ struct ChatDetailView: View {
                     .overlay(alignment: .bottomTrailing) {
                         if showAttachmentMenu {
                             VStack(spacing: 12) {
-                            Button(action: {
-                                showAttachmentMenu = false
-                                showingPreWalk = true
-                            }) {
-                                HStack {
-                                    Text("הוסף הליכה")
-                                        .foregroundColor(Color(white: 0.1))
-                                    Image(systemName: "pawprint.fill")
-                                        .foregroundColor(Color(white: 0.1))
+                                if appState.currentUserRole == .sitter && !hasActiveWalk && chatWrapper.chat.approved {
+                                    Button(action: {
+                                        showAttachmentMenu = false
+                                        showingPreWalk = true
+                                    }) {
+                                        HStack {
+                                            Text("הוסף הליכה")
+                                                .foregroundColor(Color(white: 0.1))
+                                            Image(systemName: "pawprint.fill")
+                                                .foregroundColor(Color(white: 0.1))
+                                        }
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 10)
+                                        .background(Color.white)
+                                        .cornerRadius(20)
+                                        .shadow(color: .black.opacity(0.1), radius: 5, y: 2)
+                                    }
+                                    .transition(.move(edge: .bottom).combined(with: .opacity))
                                 }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 10)
-                                .background(Color.white)
-                                .cornerRadius(20)
-                                .shadow(color: .black.opacity(0.1), radius: 5, y: 2)
-                            }
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
                             
                             Button(action: {
                                 showAttachmentMenu = false
