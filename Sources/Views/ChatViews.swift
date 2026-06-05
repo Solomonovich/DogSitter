@@ -1127,7 +1127,8 @@ struct WalkBubbleContent: View {
                     }
                     
                     HStack {
-                        Text("\(startTime.formatted(date: .omitted, time: .shortened)) -התחיל ב")
+                        let totalDuration = liveWalk?.duration ?? msg.duration ?? 0.0
+                        Text("זמן - \(formatElapsedTime(Int(totalDuration * 60)))")
                             .font(.caption)
                         Spacer()
                         Divider()
@@ -1237,13 +1238,12 @@ struct WalkBubbleContent: View {
         
         let polyline = MKPolyline(coordinates: coords, count: coords.count)
         
+        var mapRect = polyline.boundingMapRect
+        mapRect = mapRect.insetBy(dx: -mapRect.width * 0.2, dy: -mapRect.height * 0.2)
+        
         let options = MKMapSnapshotter.Options()
-        options.region = MKCoordinateRegion(polyline.boundingMapRect)
+        options.region = MKCoordinateRegion(mapRect)
         options.size = CGSize(width: 280, height: 160)
-        // Add some padding to the region to ensure the route fits nicely
-        let mapRect = polyline.boundingMapRect
-        let edgePadding = UIEdgeInsets(top: 20, left: 20, bottom: 20, right: 20)
-        // MapKit snapshotter doesn't have a direct edgePadding parameter, so we adjust the region
         
         let snapshotter = MKMapSnapshotter(options: options)
         snapshotter.start { snapshot, error in
