@@ -95,13 +95,15 @@ struct WalkFullView: View {
                                         .bold()
                                         .foregroundColor(.green)
                                 } else {
-                                    Text("\(viewModel.walk?.endTime?.dateValue().formatted(date: .omitted, time: .shortened) ?? "") - \(viewModel.walk?.startTime.dateValue().formatted(date: .omitted, time: .shortened) ?? "")")
+                                    let startTimeStr = viewModel.walk?.startTime.dateValue().formatted(date: .omitted, time: .shortened) ?? ""
+                                    let endTimeStr = viewModel.walk?.endTime?.dateValue().formatted(date: .omitted, time: .shortened) ?? ""
+                                    Text("\(startTimeStr) - \(endTimeStr)")
                                         .foregroundColor(.gray)
                                 }
                                 
                                 Spacer()
                                 
-                                Text("\(formatDuration(minutes: activeDuration)) - זמן")
+                                Text("זמן - \(formatElapsedTime(Int(activeDuration * 60)))")
                                     .bold()
                                     .foregroundColor(Color(hex: "#4A90D9"))
                             }
@@ -306,10 +308,10 @@ struct WalkFullView: View {
         }
     }
     
-    private func formatDuration(minutes: Double) -> String {
-        let h = Int(minutes) / 60
-        let m = Int(minutes) % 60
-        return String(format: "%02d:%02d", h, m)
+    private func formatElapsedTime(_ seconds: Int) -> String {
+        let minutes = seconds / 60
+        let remainingSeconds = seconds % 60
+        return String(format: "%02d:%02d", minutes, remainingSeconds)
     }
 }
 
@@ -336,19 +338,17 @@ struct WalkMapView: UIViewRepresentable {
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView()
         map.delegate = context.coordinator
-        map.showsUserLocation = true
         return map
     }
     
     func updateUIView(_ mapView: MKMapView, context: Context) {
-        // Show user location
-        mapView.showsUserLocation = true
+        let walkStatus = walk?.status ?? "active"
+        mapView.showsUserLocation = (walkStatus == "active")
         
-        // Draw route polyline
         mapView.removeOverlays(mapView.overlays)
         
         var coords: [CLLocationCoordinate2D] = []
-        if walk?.status == "active" && !tracker.coordinates.isEmpty {
+        if walkStatus == "active" && !tracker.coordinates.isEmpty {
             coords = tracker.coordinates
         } else if let walkCoords = walk?.coordinates {
             coords = walkCoords.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
@@ -357,23 +357,38 @@ struct WalkMapView: UIViewRepresentable {
         if coords.count > 1 {
             let polyline = MKPolyline(coordinates: coords, count: coords.count)
             mapView.addOverlay(polyline)
-            
-            // Zoom to fit route
-            mapView.setVisibleMapRect(
-                polyline.boundingMapRect,
-                edgePadding: UIEdgeInsets(top: 40, left: 40, bottom: 40, right: 40),
-                animated: true
-            )
-        } else if let first = coords.first {
-            // Just center on current location
-            let region = MKCoordinateRegion(
-                center: first,
-                span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005)
-            )
-            mapView.setRegion(region, animated: true)
-        } else if let trackerRegion = tracker.currentRegion {
-             mapView.setRegion(trackerRegion, animated: true)
         }
+        
+        updateMapRegion(mapView, coordinates: coords)
+    }
+    
+    func updateMapRegion(_ mapView: MKMapView, coordinates: [CLLocationCoordinate2D]) {
+        if coordinates.count <= 1 {
+            if let location = coordinates.first ?? LocationTracker.shared.currentLocation?.coordinate {
+                let region = MKCoordinateRegion(
+                    center: location,
+                    span: MKCoordinateSpan(latitudeDelta: 0.009, longitudeDelta: 0.009)
+                )
+                mapView.setRegion(region, animated: true)
+            }
+            return
+        }
+        
+        let polyline = MKPolyline(coordinates: coordinates, count: coordinates.count)
+        var rect = polyline.boundingMapRect
+        
+        rect = rect.insetBy(dx: -rect.width * 0.2, dy: -rect.height * 0.2)
+        
+        let region = MKCoordinateRegion(rect)
+        let finalRegion = MKCoordinateRegion(
+            center: region.center,
+            span: MKCoordinateSpan(
+                latitudeDelta: max(region.span.latitudeDelta, 0.009),
+                longitudeDelta: max(region.span.longitudeDelta, 0.009)
+            )
+        )
+        
+        mapView.setRegion(finalRegion, animated: true)
     }
     
     func makeCoordinator() -> Coordinator {

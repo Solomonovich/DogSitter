@@ -1154,7 +1154,7 @@ struct WalkBubbleContent: View {
             } else if isMine {
                 // SCREEN 2 — ACTIVE WALK CHAT BUBBLE (Sitter)
                 VStack(alignment: .trailing, spacing: 8) {
-                    Text(formatDuration(minutes: activeDuration))
+                    Text(formatElapsedTime(Int(activeDuration * 60)))
                         .font(.system(size: 24, weight: .bold))
                         .foregroundColor(.white)
                     
@@ -1179,7 +1179,7 @@ struct WalkBubbleContent: View {
                 // SCREEN 3 — ACTIVE WALK CHAT BUBBLE (Owner)
                 VStack(spacing: 0) {
                     VStack(spacing: 4) {
-                        Text(formatDuration(minutes: activeDuration))
+                        Text(formatElapsedTime(Int(activeDuration * 60)))
                             .font(.system(size: 40, weight: .bold))
                             .foregroundColor(Color(hex: "#4A90D9"))
                         
@@ -1279,9 +1279,9 @@ struct WalkBubbleContent: View {
         }
     }
     
-    private func formatDuration(minutes: Double) -> String {
-        let m = Int(minutes)
-        let s = Int((minutes - Double(m)) * 60)
-        return String(format: "%02d:%02d", m, s)
+    private func formatElapsedTime(_ seconds: Int) -> String {
+        let minutes = seconds / 60
+        let secs = seconds % 60
+        return String(format: "%02d:%02d", minutes, secs)
     }
 }
