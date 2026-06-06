@@ -8,7 +8,7 @@ struct BrowsePostsView: View {
     @State private var selectedPost: Post?
     @State private var sitterLocation: CLLocationCoordinate2D?
     @State private var hasGeocoded = false
-    @State private var selectedSittingType: String = "הכל"
+    @State private var selectedDateRange: ClosedRange<Date>? = nil
     @State private var selectedPetCount: String = "הכל"
     
     let collapsedHeight: CGFloat = 400
@@ -28,9 +28,14 @@ struct BrowsePostsView: View {
     var sortedPosts: [Post] {
         var posts = appState.posts
         
-        if selectedSittingType != "הכל" {
-            posts = posts.filter { $0.mappedSittingType.rawValue == selectedSittingType }
+        if let range = selectedDateRange {
+            posts = posts.filter { post in
+                let postStart = post.startDate.dateValue()
+                let postEnd = post.endDate.dateValue()
+                return postStart <= range.upperBound && postEnd >= range.lowerBound
+            }
         }
+        
         if selectedPetCount != "הכל" {
             posts = posts.filter { String($0.petIds.count) == selectedPetCount || (selectedPetCount == "3+" && $0.petIds.count >= 3) }
         }
@@ -109,7 +114,7 @@ struct BrowsePostsView: View {
             if !isShowingPostDetail {
                 HStack {
                     Spacer()
-                    FilterBarView(selectedSittingType: $selectedSittingType, selectedPetCount: $selectedPetCount)
+                    FilterBarView(selectedDateRange: $selectedDateRange, selectedPetCount: $selectedPetCount)
                 }
                 .padding(.top, 50)
                 .zIndex(2)
@@ -297,70 +302,19 @@ struct RoundedCorner: Shape {
 }
 
 struct FilterBarView: View {
-    @Binding var selectedSittingType: String
+    @Binding var selectedDateRange: ClosedRange<Date>?
     @Binding var selectedPetCount: String
     @State private var isExpanded: Bool = false
+    @State private var showCalendar: Bool = false
     
-    let sittingTypes = ["הכל", "דוגווקינג", "פנסיון", "ביקור בית", "אילוף"]
     let petCounts = ["הכל", "1", "2", "3+"]
     
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             if isExpanded {
                 VStack(alignment: .trailing, spacing: 12) {
-                    // Sitting Type
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text("סוג שירות")
-                            .font(.caption.bold())
-                            .foregroundColor(.primary)
-                        
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 6) {
-                                ForEach(sittingTypes, id: \.self) { type in
-                                    Text(type)
-                                        .font(.caption)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(selectedSittingType == type ? Color.blue : Color(.systemGray6))
-                                        .foregroundColor(selectedSittingType == type ? .white : .primary)
-                                        .clipShape(Capsule())
-                                        .onTapGesture {
-                                            withAnimation(.easeInOut(duration: 0.2)) {
-                                                selectedSittingType = type
-                                            }
-                                        }
-                                }
-                            }
-                        }
-                        .environment(\.layoutDirection, .rightToLeft)
-                    }
-                    
-                    // Pet count
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text("מספר כלבים")
-                            .font(.caption.bold())
-                            .foregroundColor(.primary)
-                        
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 6) {
-                                ForEach(petCounts, id: \.self) { count in
-                                    Text(count)
-                                        .font(.caption)
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 6)
-                                        .background(selectedPetCount == count ? Color.blue : Color(.systemGray6))
-                                        .foregroundColor(selectedPetCount == count ? .white : .primary)
-                                        .clipShape(Capsule())
-                                        .onTapGesture {
-                                            withAnimation(.easeInOut(duration: 0.2)) {
-                                                selectedPetCount = count
-                                            }
-                                        }
-                                }
-                            }
-                        }
-                        .environment(\.layoutDirection, .rightToLeft)
-                    }
+                    PetCountFilterView(selectedPetCount: $selectedPetCount, petCounts: petCounts)
+                    DatesFilterView(selectedDateRange: $selectedDateRange, showCalendar: $showCalendar)
                 }
                 .padding(12)
                 .background(Color.white.opacity(0.95))
@@ -375,6 +329,7 @@ struct FilterBarView: View {
             Button(action: {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
                     isExpanded.toggle()
+                    if !isExpanded { showCalendar = false }
                 }
             }) {
                 Image(systemName: "slider.horizontal.3")
@@ -387,6 +342,244 @@ struct FilterBarView: View {
             }
             .padding(.trailing, 16)
         }
+    }
+}
+
+struct PetCountFilterView: View {
+    @Binding var selectedPetCount: String
+    let petCounts: [String]
+    
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 4) {
+            Text("מספר כלבים")
+                .font(.caption.bold())
+                .foregroundColor(.primary)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(petCounts, id: \.self) { count in
+                        Text(count)
+                            .font(.caption)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(selectedPetCount == count ? Color.blue : Color(.systemGray6))
+                            .foregroundColor(selectedPetCount == count ? .white : .primary)
+                            .clipShape(Capsule())
+                            .onTapGesture {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    selectedPetCount = count
+                                }
+                            }
+                    }
+                }
+            }
+            .environment(\.layoutDirection, .rightToLeft)
+        }
+    }
+}
+
+struct DatesFilterView: View {
+    @Binding var selectedDateRange: ClosedRange<Date>?
+    @Binding var showCalendar: Bool
+    
+    var dateString: String {
+        guard let range = selectedDateRange else { return "" }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd/MM/yy"
+        return "\(formatter.string(from: range.lowerBound)) - \(formatter.string(from: range.upperBound))"
+    }
+    
+    var body: some View {
+        VStack(alignment: .trailing, spacing: 4) {
+            Text("תאריכים")
+                .font(.caption.bold())
+                .foregroundColor(.primary)
+            
+            Button(action: {
+                withAnimation {
+                    showCalendar.toggle()
+                }
+            }) {
+                HStack {
+                    if selectedDateRange != nil {
+                        Text(dateString)
+                    } else {
+                        Text("בחר תאריכים")
+                    }
+                    Image(systemName: "calendar")
+                }
+                .font(.caption)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(showCalendar || selectedDateRange != nil ? Color.blue : Color(.systemGray6))
+                .foregroundColor(showCalendar || selectedDateRange != nil ? .white : .primary)
+                .cornerRadius(8)
+            }
+            
+            if showCalendar {
+                DragSelectCalendarView(selectedDateRange: $selectedDateRange)
+                    .frame(width: 280)
+                    .background(Color.white)
+                    .cornerRadius(12)
+                    .shadow(radius: 5)
+                    .padding(.top, 8)
+            }
+        }
+    }
+}
+
+struct DragSelectCalendarView: View {
+    @Binding var selectedDateRange: ClosedRange<Date>?
+    
+    @State private var dragStartDate: Date? = nil
+    @State private var hoverEndDate: Date? = nil
+    
+    let calendar = Calendar.current
+    let today = Date()
+    
+    var days: [Date] {
+        let components = calendar.dateComponents([.year, .month], from: today)
+        let startOfMonth = calendar.date(from: components)!
+        let range = calendar.range(of: .day, in: .month, for: startOfMonth)!
+        
+        let firstWeekday = calendar.component(.weekday, from: startOfMonth)
+        let offset = firstWeekday - calendar.firstWeekday
+        let adjustedOffset = offset < 0 ? offset + 7 : offset
+        
+        var dates: [Date] = []
+        for i in 0..<adjustedOffset {
+            dates.append(calendar.date(byAdding: .day, value: -adjustedOffset + i, to: startOfMonth)!)
+        }
+        for i in 0..<range.count {
+            dates.append(calendar.date(byAdding: .day, value: i, to: startOfMonth)!)
+        }
+        
+        let remaining = 42 - dates.count
+        if let lastDate = dates.last {
+            for i in 1...remaining {
+                dates.append(calendar.date(byAdding: .day, value: i, to: lastDate)!)
+            }
+        }
+        
+        return dates
+    }
+    
+    var monthString: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        formatter.locale = Locale(identifier: "he_IL")
+        return formatter.string(from: today)
+    }
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            Text(monthString)
+                .font(.headline)
+                .padding(.top, 8)
+            
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
+                ForEach(["א", "ב", "ג", "ד", "ה", "ו", "ש"], id: \.self) { day in
+                    Text(day).font(.caption).bold()
+                }
+                
+                ForEach(days, id: \.self) { date in
+                    let isCurrentMonth = calendar.isDate(date, equalTo: today, toGranularity: .month)
+                    
+                    Text("\(calendar.component(.day, from: date))")
+                        .font(.system(size: 14))
+                        .frame(width: 32, height: 32)
+                        .background(backgroundFor(date: date))
+                        .foregroundColor(isCurrentMonth ? (isDateSelected(date) ? .white : .primary) : .gray)
+                        .clipShape(Circle())
+                        .background(
+                            GeometryReader { geo in
+                                Color.clear.preference(
+                                    key: DateRectKey.self,
+                                    value: [date: geo.frame(in: .named("CalendarGrid"))]
+                                )
+                            }
+                        )
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.bottom, 8)
+            
+            if selectedDateRange != nil {
+                Button(action: {
+                    selectedDateRange = nil
+                }) {
+                    Text("נקה בחירה")
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
+                .padding(.bottom, 8)
+            }
+        }
+        .environment(\.layoutDirection, .rightToLeft)
+        .coordinateSpace(name: "CalendarGrid")
+        .onPreferenceChange(DateRectKey.self) { rects in
+            self.dateRects = rects
+        }
+        .gesture(
+            DragGesture(minimumDistance: 0, coordinateSpace: .named("CalendarGrid"))
+                .onChanged { value in
+                    if let date = dateAt(point: value.location) {
+                        if dragStartDate == nil {
+                            dragStartDate = date
+                        }
+                        hoverEndDate = date
+                        updateSelection()
+                    }
+                }
+                .onEnded { value in
+                    dragStartDate = nil
+                    hoverEndDate = nil
+                }
+        )
+    }
+    
+    @State private var dateRects: [Date: CGRect] = [:]
+    
+    private func dateAt(point: CGPoint) -> Date? {
+        for (date, rect) in dateRects {
+            if rect.contains(point) {
+                return date
+            }
+        }
+        return nil
+    }
+    
+    private func updateSelection() {
+        guard let start = dragStartDate, let end = hoverEndDate else { return }
+        let lower = min(start, end)
+        let upper = max(start, end)
+        
+        let startOfDayLower = calendar.startOfDay(for: lower)
+        let endOfDayUpper = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: upper) ?? upper
+        
+        selectedDateRange = startOfDayLower...endOfDayUpper
+    }
+    
+    private func isDateSelected(_ date: Date) -> Bool {
+        guard let range = selectedDateRange else { return false }
+        let startOfDay = calendar.startOfDay(for: date)
+        let lowerStart = calendar.startOfDay(for: range.lowerBound)
+        let upperStart = calendar.startOfDay(for: range.upperBound)
+        return startOfDay >= lowerStart && startOfDay <= upperStart
+    }
+    
+    private func backgroundFor(date: Date) -> Color {
+        if isDateSelected(date) {
+            return Color.blue
+        }
+        return Color.clear
+    }
+}
+
+struct DateRectKey: PreferenceKey {
+    static var defaultValue: [Date: CGRect] = [:]
+    static func reduce(value: inout [Date: CGRect], nextValue: () -> [Date: CGRect]) {
+        value.merge(nextValue()) { current, _ in current }
     }
 }
 

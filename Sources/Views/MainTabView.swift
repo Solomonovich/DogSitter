@@ -10,29 +10,23 @@ struct MainTabView: View {
     var body: some View {
         if appState.currentUserRole == .sitter {
             TabView(selection: $sitterTab) {
-                SitterHomeView()
-                    .tabItem {
-                        Label("בית", systemImage: "house")
-                    }
-                    .tag(0)
-                
                 BrowsePostsView()
                     .tabItem {
                         Label("פוסטים", systemImage: "magnifyingglass")
                     }
-                    .tag(1)
+                    .tag(0)
                 
                 ChatsListView()
                     .tabItem {
                         Label("הודעות", systemImage: "message")
                     }
-                    .tag(2)
+                    .tag(1)
                 
                 ProfileView()
                     .tabItem {
                         Label("פרופיל", systemImage: "person")
                     }
-                    .tag(3)
+                    .tag(2)
             }
             .accentColor(.orange)
         } else {
