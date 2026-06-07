@@ -433,18 +433,20 @@ struct DragSelectCalendarView: View {
     
     @State private var dragStartDate: Date? = nil
     @State private var hoverEndDate: Date? = nil
+    @State private var monthOffset: Int = 0
     
     let calendar = Calendar.current
-    let today = Date()
+    let today = Calendar.current.startOfDay(for: Date())
     
-    var days: [Date] {
-        let components = calendar.dateComponents([.year, .month], from: today)
+    private func days(for offset: Int) -> [Date] {
+        let targetMonth = calendar.date(byAdding: .month, value: offset, to: today)!
+        let components = calendar.dateComponents([.year, .month], from: targetMonth)
         let startOfMonth = calendar.date(from: components)!
         let range = calendar.range(of: .day, in: .month, for: startOfMonth)!
         
         let firstWeekday = calendar.component(.weekday, from: startOfMonth)
-        let offset = firstWeekday - calendar.firstWeekday
-        let adjustedOffset = offset < 0 ? offset + 7 : offset
+        let wOffset = firstWeekday - calendar.firstWeekday
+        let adjustedOffset = wOffset < 0 ? wOffset + 7 : wOffset
         
         var dates: [Date] = []
         for i in 0..<adjustedOffset {
@@ -464,45 +466,51 @@ struct DragSelectCalendarView: View {
         return dates
     }
     
-    var monthString: String {
+    private func monthString(for offset: Int) -> String {
+        let targetMonth = calendar.date(byAdding: .month, value: offset, to: today)!
         let formatter = DateFormatter()
         formatter.dateFormat = "MMMM yyyy"
         formatter.locale = Locale(identifier: "he_IL")
-        return formatter.string(from: today)
+        return formatter.string(from: targetMonth)
     }
     
     var body: some View {
         VStack(spacing: 8) {
-            Text(monthString)
-                .font(.headline)
-                .padding(.top, 8)
-            
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
-                ForEach(["א", "ב", "ג", "ד", "ה", "ו", "ש"], id: \.self) { day in
-                    Text(day).font(.caption).bold()
+            HStack {
+                Button(action: {
+                    withAnimation { monthOffset -= 1 }
+                }) {
+                    Image(systemName: "chevron.right")
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .foregroundColor(monthOffset > 0 ? .blue : .gray.opacity(0.5))
                 }
+                .disabled(monthOffset <= 0)
                 
-                ForEach(days, id: \.self) { date in
-                    let isCurrentMonth = calendar.isDate(date, equalTo: today, toGranularity: .month)
-                    
-                    Text("\(calendar.component(.day, from: date))")
-                        .font(.system(size: 14))
-                        .frame(width: 32, height: 32)
-                        .background(backgroundFor(date: date))
-                        .foregroundColor(isCurrentMonth ? (isDateSelected(date) ? .white : .primary) : .gray)
-                        .clipShape(Circle())
-                        .background(
-                            GeometryReader { geo in
-                                Color.clear.preference(
-                                    key: DateRectKey.self,
-                                    value: [date: geo.frame(in: .named("CalendarGrid"))]
-                                )
-                            }
-                        )
+                Spacer()
+                Text(monthString(for: monthOffset))
+                    .font(.headline)
+                Spacer()
+                
+                Button(action: {
+                    withAnimation { monthOffset += 1 }
+                }) {
+                    Image(systemName: "chevron.left")
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .foregroundColor(.blue)
                 }
             }
-            .padding(.horizontal, 8)
-            .padding(.bottom, 8)
+            .padding(.top, 4)
+            
+            TabView(selection: $monthOffset) {
+                ForEach(0..<12, id: \.self) { offset in
+                    calendarGrid(for: offset)
+                        .tag(offset)
+                }
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .frame(height: 260)
             
             if selectedDateRange != nil {
                 Button(action: {
@@ -521,9 +529,9 @@ struct DragSelectCalendarView: View {
             self.dateRects = rects
         }
         .gesture(
-            DragGesture(minimumDistance: 0, coordinateSpace: .named("CalendarGrid"))
+            DragGesture(minimumDistance: 10, coordinateSpace: .named("CalendarGrid"))
                 .onChanged { value in
-                    if let date = dateAt(point: value.location) {
+                    if let date = dateAt(point: value.location), date >= today {
                         if dragStartDate == nil {
                             dragStartDate = date
                         }
@@ -536,6 +544,43 @@ struct DragSelectCalendarView: View {
                     hoverEndDate = nil
                 }
         )
+    }
+    
+    @ViewBuilder
+    private func calendarGrid(for offset: Int) -> some View {
+        let targetMonth = calendar.date(byAdding: .month, value: offset, to: today)!
+        let gridDays = days(for: offset)
+        
+        VStack(spacing: 8) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
+                ForEach(["א", "ב", "ג", "ד", "ה", "ו", "ש"], id: \.self) { day in
+                    Text(day).font(.caption).bold()
+                }
+                
+                ForEach(gridDays, id: \.self) { date in
+                    let isCurrentMonth = calendar.isDate(date, equalTo: targetMonth, toGranularity: .month)
+                    let isPast = date < today
+                    
+                    Text("\(calendar.component(.day, from: date))")
+                        .font(.system(size: 14))
+                        .strikethrough(isPast, color: .gray)
+                        .frame(width: 32, height: 32)
+                        .background(backgroundFor(date: date, isPast: isPast))
+                        .foregroundColor(textColorFor(date: date, isCurrentMonth: isCurrentMonth, isPast: isPast))
+                        .clipShape(Circle())
+                        .background(
+                            GeometryReader { geo in
+                                Color.clear.preference(
+                                    key: DateRectKey.self,
+                                    value: [date: geo.frame(in: .named("CalendarGrid"))]
+                                )
+                            }
+                        )
+                }
+            }
+            .padding(.horizontal, 8)
+            Spacer()
+        }
     }
     
     @State private var dateRects: [Date: CGRect] = [:]
@@ -551,8 +596,12 @@ struct DragSelectCalendarView: View {
     
     private func updateSelection() {
         guard let start = dragStartDate, let end = hoverEndDate else { return }
-        let lower = min(start, end)
-        let upper = max(start, end)
+        
+        let validStart = max(start, today)
+        let validEnd = max(end, today)
+        
+        let lower = min(validStart, validEnd)
+        let upper = max(validStart, validEnd)
         
         let startOfDayLower = calendar.startOfDay(for: lower)
         let endOfDayUpper = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: upper) ?? upper
@@ -568,11 +617,24 @@ struct DragSelectCalendarView: View {
         return startOfDay >= lowerStart && startOfDay <= upperStart
     }
     
-    private func backgroundFor(date: Date) -> Color {
-        if isDateSelected(date) {
+    private func backgroundFor(date: Date, isPast: Bool) -> Color {
+        if !isPast && isDateSelected(date) {
             return Color.blue
         }
         return Color.clear
+    }
+    
+    private func textColorFor(date: Date, isCurrentMonth: Bool, isPast: Bool) -> Color {
+        if isPast {
+            return .gray.opacity(0.5)
+        }
+        if !isCurrentMonth {
+            return .gray.opacity(0.3)
+        }
+        if isDateSelected(date) {
+            return .white
+        }
+        return .primary
     }
 }
 
