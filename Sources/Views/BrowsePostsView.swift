@@ -490,6 +490,7 @@ struct DragSelectCalendarView: View {
                 Spacer()
                 Text(monthString(for: monthOffset))
                     .font(.headline)
+                    .foregroundColor(Color(white: 0.2))
                 Spacer()
                 
                 Button(action: {
@@ -510,7 +511,7 @@ struct DragSelectCalendarView: View {
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
-            .frame(height: 260)
+            .frame(height: 320)
             
             if selectedDateRange != nil {
                 Button(action: {
@@ -554,7 +555,10 @@ struct DragSelectCalendarView: View {
         VStack(spacing: 8) {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
                 ForEach(["א", "ב", "ג", "ד", "ה", "ו", "ש"], id: \.self) { day in
-                    Text(day).font(.caption).bold()
+                    Text(day)
+                        .font(.caption)
+                        .bold()
+                        .foregroundColor(Color(white: 0.2))
                 }
                 
                 ForEach(gridDays, id: \.self) { date in
@@ -576,6 +580,18 @@ struct DragSelectCalendarView: View {
                                 )
                             }
                         )
+                        .onTapGesture {
+                            guard date >= today else { return }
+                            if dragStartDate == nil || (dragStartDate != nil && hoverEndDate != dragStartDate && hoverEndDate != nil) {
+                                // Start new selection
+                                dragStartDate = date
+                                hoverEndDate = date
+                            } else {
+                                // Complete selection
+                                hoverEndDate = date
+                            }
+                            updateSelection()
+                        }
                 }
             }
             .padding(.horizontal, 8)
@@ -634,7 +650,7 @@ struct DragSelectCalendarView: View {
         if isDateSelected(date) {
             return .white
         }
-        return .primary
+        return Color(white: 0.2)
     }
 }
 

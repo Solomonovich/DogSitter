@@ -28,7 +28,7 @@ struct MainTabView: View {
                     }
                     .tag(2)
             }
-            .accentColor(.orange)
+            .accentColor(.blue)
         } else {
             TabView(selection: $ownerTab) {
                 OwnerProfileView()
