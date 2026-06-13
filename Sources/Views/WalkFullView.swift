@@ -59,7 +59,7 @@ struct WalkFullView: View {
     
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            Color(.systemBackground).ignoresSafeArea()
             
             VStack(spacing: 0) {
                 // Map Area
@@ -74,7 +74,7 @@ struct WalkFullView: View {
                                     .font(.system(size: 20))
                                     .foregroundColor(.blue)
                                     .frame(width: 48, height: 48)
-                                    .background(Color.white)
+                                    .background(Color(.systemBackground))
                                     .clipShape(Circle())
                                     .shadow(color: .black.opacity(0.2), radius: 5, y: 2)
                             }
@@ -175,7 +175,7 @@ struct WalkFullView: View {
                     .padding()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.white)
+                .background(Color(.systemBackground))
                 .cornerRadius(24, corners: [.topLeft, .topRight])
                 .ignoresSafeArea(edges: .bottom)
             }
@@ -188,7 +188,7 @@ struct WalkFullView: View {
                             .font(.system(size: 20, weight: .bold))
                             .foregroundColor(.black)
                             .padding(12)
-                            .background(Color.white)
+                            .background(Color(.systemBackground))
                             .clipShape(Circle())
                             .shadow(color: .black.opacity(0.1), radius: 4)
                     }
@@ -212,7 +212,7 @@ struct WalkFullView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
-                .background(Color.white)
+                .background(Color(.systemBackground))
                 .clipShape(Capsule())
                 .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 3)
                 .padding(.horizontal, 40)

@@ -98,11 +98,7 @@ struct MapContainerView: UIViewRepresentable {
         let mapView = MKMapView()
         mapView.delegate = context.coordinator
         
-        // Setup OpenStreetMap Tile Overlay
-        let template = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-        let overlay = MKTileOverlay(urlTemplate: template)
-        overlay.canReplaceMapContent = true
-        mapView.addOverlay(overlay, level: .aboveLabels)
+        // Use native Apple Maps for automatic dark mode support
         
         mapView.showsUserLocation = true
         

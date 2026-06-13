@@ -8,7 +8,7 @@ struct ChatsListView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(white: 0.98).edgesIgnoringSafeArea(.all)
+                Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all)
                 
                 if appState.currentUserRole == .owner {
                     OwnerChatListView()
@@ -92,7 +92,7 @@ struct OwnerChatGroupView: View {
                 }
                 .padding(.horizontal)
                 .frame(height: 44)
-                .background(group.isActive ? Color(red: 0.94, green: 1.0, blue: 0.94) : Color(white: 0.96))
+                .background(group.isActive ? Color.green.opacity(0.1) : Color(.secondarySystemGroupedBackground))
             }
             .buttonStyle(PlainButtonStyle())
             
@@ -113,7 +113,7 @@ struct OwnerChatGroupView: View {
                 }
             }
         }
-        .background(Color.white)
+        .background(Color(.systemBackground))
         .cornerRadius(12)
         .padding(.horizontal)
         .onAppear {
@@ -179,7 +179,7 @@ struct OwnerChatRowView: View {
         }
         .padding()
         .frame(height: 72)
-        .background(isApproved ? Color(red: 1.0, green: 0.95, blue: 0.7) : Color.white)
+        .background(isApproved ? Color.yellow.opacity(0.2) : Color(.systemBackground))
         .alert("אישור מטפל", isPresented: $showingApproveAlert) {
             Button("ביטול", role: .cancel) { }
             Button("אשר") {
@@ -276,7 +276,7 @@ struct SitterChatRowView: View {
         }
         .padding()
         .frame(height: 72)
-        .background(wrapper.chat.approved ? Color(red: 1.0, green: 0.95, blue: 0.7) : Color.white)
+        .background(wrapper.chat.approved ? Color.yellow.opacity(0.2) : Color(.systemBackground))
     }
 }
 
@@ -334,7 +334,7 @@ struct ChatDetailView: View {
     
     var body: some View {
         ZStack {
-            Color(white: 0.98).edgesIgnoringSafeArea(.all)
+            Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all)
             
             VStack(spacing: 0) {
                 ScrollViewReader { proxy in
@@ -437,7 +437,7 @@ struct ChatDetailView: View {
                                 .lineLimit(1...5)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
-                                .background(Color(white: 0.95))
+                                .background(Color(.secondarySystemGroupedBackground))
                                 .cornerRadius(20)
                                 .multilineTextAlignment(.trailing)
                             
@@ -451,14 +451,14 @@ struct ChatDetailView: View {
                                     .font(.system(size: 18, weight: .bold))
                                     .foregroundColor(.blue)
                                     .frame(width: 32, height: 32)
-                                    .background(Color.white)
+                                    .background(Color(.systemBackground))
                                     .clipShape(Circle())
                                     .overlay(Circle().stroke(Color.blue, lineWidth: 1.5))
                             }
                         }
                         .padding(.horizontal)
                         .padding(.vertical, 8)
-                        .background(Color.white)
+                        .background(Color(.systemBackground))
                     }
                     .overlay(alignment: .bottomTrailing) {
                         if showAttachmentMenu {
@@ -476,7 +476,7 @@ struct ChatDetailView: View {
                                         }
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 10)
-                                        .background(Color.white)
+                                        .background(Color(.systemBackground))
                                         .cornerRadius(20)
                                         .shadow(color: .black.opacity(0.1), radius: 5, y: 2)
                                     }
@@ -495,7 +495,7 @@ struct ChatDetailView: View {
                                 }
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 10)
-                                .background(Color.white)
+                                .background(Color(.systemBackground))
                                 .cornerRadius(20)
                                 .shadow(color: .black.opacity(0.1), radius: 5, y: 2)
                             }
@@ -786,7 +786,7 @@ struct ChatBubbleView: View {
                 VStack(alignment: isMine ? .trailing : .leading, spacing: 4) {
                     Text(msg.text)
                         .padding(12)
-                        .background(isMine ? Color(red: 0.29, green: 0.56, blue: 0.85) : Color(white: 0.94))
+                        .background(isMine ? Color.blue : Color(.secondarySystemGroupedBackground))
                         .foregroundColor(isMine ? .white : Color(white: 0.1))
                         .clipShape(RoundedCorner(radius: 16, corners: isMine ? [.topLeft, .topRight, .bottomLeft] : [.topLeft, .topRight, .bottomRight]))
                     
@@ -825,7 +825,7 @@ struct ChatUserProfileView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(white: 0.98).edgesIgnoringSafeArea(.all)
+                Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all)
                 
                 if isLoading {
                     ProgressView()
@@ -882,7 +882,7 @@ struct ChatUserProfileView: View {
                                     .foregroundColor(.gray)
                                     .multilineTextAlignment(.center)
                                     .padding(16)
-                                    .background(Color(white: 0.95))
+                                    .background(Color(.secondarySystemGroupedBackground))
                                     .cornerRadius(12)
                                     .padding(.horizontal)
                             }
@@ -1146,7 +1146,7 @@ struct WalkBubbleContent: View {
                     .background(Color(hex: "#9E9E9E").opacity(0.3))
                 }
                 .frame(width: 280)
-                .background(Color.white)
+                .background(Color(.systemBackground))
                 .cornerRadius(16)
                 .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(hex: "#4A90D9"), lineWidth: 2))
                 .padding(.vertical, 4)
@@ -1174,7 +1174,7 @@ struct WalkBubbleContent: View {
                             .foregroundColor(.red)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 8)
-                            .background(Color.white)
+                            .background(Color(.systemBackground))
                             .cornerRadius(8)
                     }
                 }

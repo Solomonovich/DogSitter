@@ -229,7 +229,7 @@ struct BrowsePostsView: View {
                 }
                 .frame(height: sheetHeight)
                 .frame(maxWidth: .infinity)
-                .background(Color.white)
+                .background(Color(.systemBackground))
                 .cornerRadius(20, corners: [.topLeft, .topRight])
                 .shadow(color: .black.opacity(0.15), radius: 10, y: -5)
                 .offset(y: isShowingPostDetail ? max(0, detailDragOffset) : 0)
@@ -317,7 +317,7 @@ struct FilterBarView: View {
                     DatesFilterView(selectedDateRange: $selectedDateRange, showCalendar: $showCalendar)
                 }
                 .padding(12)
-                .background(Color.white.opacity(0.95))
+                .background(Color(.systemBackground).opacity(0.95))
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 4)
                 .transition(.asymmetric(
@@ -336,7 +336,7 @@ struct FilterBarView: View {
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(isExpanded ? .white : .gray)
                     .frame(width: 40, height: 40)
-                    .background(isExpanded ? Color.blue : Color.white)
+                    .background(isExpanded ? Color.blue : Color(.systemBackground))
                     .clipShape(Circle())
                     .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
             }
@@ -419,7 +419,7 @@ struct DatesFilterView: View {
             if showCalendar {
                 DragSelectCalendarView(selectedDateRange: $selectedDateRange)
                     .frame(width: 280)
-                    .background(Color.white)
+                    .background(Color(.systemBackground))
                     .cornerRadius(12)
                     .shadow(radius: 5)
                     .padding(.top, 8)
@@ -714,21 +714,21 @@ struct PostCardBanner: View {
                     Button(action: toggleSave) {
                         Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
                             .font(.system(size: 22))
-                            .foregroundColor(Color(white: 0.2))
+                            .foregroundColor(.secondary)
                     }
                     
                     ShareLink(item: "בדוק את המודעה הזו ב-דוגסיטר!\nמאת \(post.ownerName)\nב-\(post.address)") {
                         Image(systemName: "square.and.arrow.up")
                             .font(.system(size: 22))
-                            .foregroundColor(Color(white: 0.2))
+                            .foregroundColor(.secondary)
                     }
                     
                     if isDetail {
                         Button(action: { onClose?() }) {
                             Circle()
-                                .fill(Color(white: 0.9))
+                                .fill(Color(.secondarySystemGroupedBackground))
                                 .frame(width: 30, height: 30)
-                                .overlay(Image(systemName: "xmark").foregroundColor(Color(white: 0.3)).font(.system(size: 14, weight: .bold)))
+                                .overlay(Image(systemName: "xmark").foregroundColor(.secondary).font(.system(size: 14, weight: .bold)))
                         }
                     }
                 }
@@ -745,14 +745,14 @@ struct PostCardBanner: View {
                         Text(firstName)
                             .bold()
                             .font(.system(size: 17))
-                            .foregroundColor(Color(white: 0.1))
+                            .foregroundColor(.primary)
                             .multilineTextAlignment(.trailing)
                         
                         if !lastName.isEmpty {
                             Text(lastName)
                                 .bold()
                                 .font(.system(size: 17))
-                                .foregroundColor(Color(white: 0.1))
+                                .foregroundColor(.primary)
                                 .multilineTextAlignment(.trailing)
                         }
                     }
@@ -777,7 +777,7 @@ struct PostCardBanner: View {
             
             // DIVIDER
             Rectangle()
-                .fill(Color(red: 224/255, green: 224/255, blue: 224/255))
+                .fill(Color(.separator))
                 .frame(height: 1)
                 .padding(.vertical, 10)
             
@@ -785,17 +785,17 @@ struct PostCardBanner: View {
             VStack(alignment: .trailing, spacing: 8) {
                 Text(post.address.components(separatedBy: ",").first ?? post.address)
                     .font(.system(size: 14))
-                    .foregroundColor(Color(white: 0.4))
+                    .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .trailing)
                 
                 Text("חיות: \(post.petIds.count)")
                     .font(.system(size: 14))
-                    .foregroundColor(Color(white: 0.4))
+                    .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .trailing)
                 
                 Text(dateString)
                     .font(.system(size: 16))
-                    .foregroundColor(Color(white: 0.1))
+                    .foregroundColor(.secondary) // Match the dark gray address color
                     .frame(maxWidth: .infinity, alignment: .trailing)
                 
                 // PRICE BUBBLE - Push to RIGHT with Spacer
@@ -832,7 +832,7 @@ struct PostCardBanner: View {
         }
         .padding(.vertical, 14)
         .padding(.horizontal, 16)
-        .background(isDetail ? Color.white : Color(red: 242/255, green: 242/255, blue: 247/255))
+        .background(isDetail ? Color(.systemBackground) : Color(.systemGroupedBackground))
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
         .environment(\.layoutDirection, .leftToRight)
@@ -914,7 +914,7 @@ struct DogCardView: View {
                     }
                 }
                 .frame(width: 52, height: 52)
-                .background(Color(white: 0.9))
+                .background(Color(.systemGroupedBackground))
                 .clipShape(Circle())
                 
                 // LEFT OF PHOTO
@@ -945,7 +945,7 @@ struct DogCardView: View {
             }
         }
         .padding(16)
-        .background(Color.white)
+        .background(Color(.systemBackground))
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
         .environment(\.layoutDirection, .rightToLeft)
@@ -966,7 +966,7 @@ struct PostDetailSheetView: View {
             VStack(spacing: 0) {
                 // FIXED TOP BANNER
                 PostCardBanner(post: post, isDetail: true, onClose: onClose)
-                    .background(Color.white.shadow(color: .black.opacity(0.05), radius: 5, y: 5))
+                    .background(Color(.systemBackground).shadow(color: .black.opacity(0.05), radius: 5, y: 5))
                     .zIndex(1)
                 
                 // SCROLLABLE CONTENT
@@ -980,11 +980,11 @@ struct PostDetailSheetView: View {
                                     .foregroundColor(Color(white: 0.33))
                                     .padding(16)
                                     .frame(maxWidth: .infinity, alignment: .trailing)
-                                    .background(Color(white: 0.94))
+                                    .background(Color(.secondarySystemGroupedBackground))
                                     .cornerRadius(12)
                             }
                             .padding(16)
-                            .background(Color.white)
+                            .background(Color(.systemBackground))
                             .cornerRadius(16)
                             .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
                             .padding(.horizontal, 16)
@@ -1006,7 +1006,7 @@ struct PostDetailSheetView: View {
                     }
                     .environment(\.layoutDirection, .rightToLeft)
                 }
-                .background(Color(white: 0.96))
+                .background(Color(.secondarySystemGroupedBackground))
                 
                 // FIXED BOTTOM BUTTON
                 Button(action: {
@@ -1032,7 +1032,7 @@ struct PostDetailSheetView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, geometry.safeAreaInsets.bottom + 83 + 16)
                 .padding(.top, 16)
-                .background(Color(white: 0.96))
+                .background(Color(.secondarySystemGroupedBackground))
             }
         }
         .task {
