@@ -34,6 +34,7 @@ struct ProfileView: View {
                     }
                 }
                 
+                
                 Section {
                     NavigationLink(destination: EditProfileView()) {
                         Text("ערוך פרופיל")
@@ -70,9 +71,15 @@ struct ProfileView: View {
                 .listRowSeparator(.hidden)
             }
             .scrollContentBackground(.hidden)
-            .background(Color.white.edgesIgnoringSafeArea(.all))
-            .environment(\.colorScheme, .light)
+            .background(Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all))
             .navigationTitle("הפרופיל שלי")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    ThemeToggleView()
+                        .scaleEffect(0.6)
+                        .frame(width: 84, height: 36) // scaled down from 140x60
+                }
+            }
         }
     }
 }
@@ -127,8 +134,7 @@ struct EditProfileView: View {
             .padding(.top, 16)
         }
         .scrollContentBackground(.hidden)
-        .background(Color.white.edgesIgnoringSafeArea(.all))
-        .environment(\.colorScheme, .light)
+        .background(Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all))
         .environment(\.layoutDirection, .rightToLeft)
         .navigationTitle("ערוך פרופיל")
         .navigationBarTitleDisplayMode(.inline)

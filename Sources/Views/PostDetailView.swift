@@ -203,8 +203,7 @@ struct PostDetailView: View {
             }
             .padding()
         }
-        .background(Color.white.edgesIgnoringSafeArea(.all))
-        .environment(\.colorScheme, .light)
+        .background(Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all))
         .navigationTitle("פרטי הבקשה")
         .navigationBarTitleDisplayMode(.inline)
     }

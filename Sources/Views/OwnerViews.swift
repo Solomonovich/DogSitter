@@ -122,6 +122,13 @@ struct OwnerProfileView: View {
                 }
             }
             .navigationTitle("הפרופיל שלי")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    ThemeToggleView()
+                        .scaleEffect(0.6)
+                        .frame(width: 84, height: 36)
+                }
+            }
         }
     }
 }
