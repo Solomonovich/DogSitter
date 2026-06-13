@@ -38,8 +38,15 @@ struct ProfileView: View {
                     NavigationLink(destination: EditProfileView()) {
                         Text("ערוך פרופיל")
                             .foregroundColor(.blue)
+                            .frame(maxWidth: .infinity, alignment: .center)
                     }
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
                 }
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
                 
                 Section {
                     Button(action: {
@@ -52,9 +59,19 @@ struct ProfileView: View {
                     }) {
                         Text("התנתק")
                             .foregroundColor(.red)
+                            .frame(maxWidth: .infinity, alignment: .center)
                     }
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
                 }
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.white.edgesIgnoringSafeArea(.all))
+            .environment(\.colorScheme, .light)
             .navigationTitle("הפרופיל שלי")
         }
     }
@@ -109,6 +126,9 @@ struct EditProfileView: View {
             .listRowBackground(Color.clear)
             .padding(.top, 16)
         }
+        .scrollContentBackground(.hidden)
+        .background(Color.white.edgesIgnoringSafeArea(.all))
+        .environment(\.colorScheme, .light)
         .environment(\.layoutDirection, .rightToLeft)
         .navigationTitle("ערוך פרופיל")
         .navigationBarTitleDisplayMode(.inline)

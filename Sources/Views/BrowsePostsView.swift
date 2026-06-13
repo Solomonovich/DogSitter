@@ -1069,6 +1069,7 @@ struct PetDetailOverlayView: View {
                     Spacer()
                     Text(pet.name)
                         .font(.headline)
+                        .foregroundColor(.black)
                     Spacer()
                     Image(systemName: "xmark.circle.fill").opacity(0)
                 }
@@ -1109,23 +1110,23 @@ struct PetDetailOverlayView: View {
                             // 2. Additional Info
                             if !pet.additionalInfo.isEmpty {
                                 Text(pet.additionalInfo)
-                                    .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2)) // #333333
+                                    .foregroundColor(.black)
                                     .padding(16)
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                    .background(Color(red: 0.94, green: 0.94, blue: 0.94)) // #F0F0F0
+                                    .background(Color(red: 199/255, green: 198/255, blue: 193/255))
                                     .cornerRadius(16)
                             }
                             
                             // 3. Behavior section
-                            Text("התנהגות").font(.headline.bold()).padding(.top, 8)
+                            Text("התנהגות").font(.headline.bold()).padding(.top, 8).foregroundColor(.black)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
                                     Text("ידידותי לילדים")
-                                        .foregroundColor(Color(white: 0.1))
+                                        .foregroundColor(.black)
                                     Text(pet.friendlyWithChildren)
                                         .font(.caption.bold())
-                                        .foregroundColor(Color(white: 0.1))
+                                        .foregroundColor(.black)
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 4)
                                         .background(pet.friendlyWithChildren == "כן מאוד" ? Color.green.opacity(0.2) : (pet.friendlyWithChildren == "לפעמים" ? Color.orange.opacity(0.2) : Color.red.opacity(0.2)))
@@ -1134,10 +1135,10 @@ struct PetDetailOverlayView: View {
                                 }.frame(maxWidth: .infinity, alignment: .leading)
                                 HStack {
                                     Text("ידידותי לכלבים")
-                                        .foregroundColor(Color(white: 0.1))
+                                        .foregroundColor(.black)
                                     Text(pet.friendlyWithDogs)
                                         .font(.caption.bold())
-                                        .foregroundColor(Color(white: 0.1))
+                                        .foregroundColor(.black)
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 4)
                                         .background(pet.friendlyWithDogs == "כן מאוד" ? Color.green.opacity(0.2) : (pet.friendlyWithDogs == "לפעמים" ? Color.orange.opacity(0.2) : Color.red.opacity(0.2)))
@@ -1146,10 +1147,10 @@ struct PetDetailOverlayView: View {
                                 }.frame(maxWidth: .infinity, alignment: .leading)
                                 HStack {
                                     Text("ידידותי לחתולים")
-                                        .foregroundColor(Color(white: 0.1))
+                                        .foregroundColor(.black)
                                     Text(pet.friendlyWithCats)
                                         .font(.caption.bold())
-                                        .foregroundColor(Color(white: 0.1))
+                                        .foregroundColor(.black)
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 4)
                                         .background(pet.friendlyWithCats == "כן מאוד" ? Color.green.opacity(0.2) : (pet.friendlyWithCats == "לפעמים" ? Color.orange.opacity(0.2) : Color.red.opacity(0.2)))
@@ -1158,17 +1159,17 @@ struct PetDetailOverlayView: View {
                                 }.frame(maxWidth: .infinity, alignment: .leading)
                             }
                             .padding()
-                            .background(Color.white)
+                            .background(Color(red: 199/255, green: 198/255, blue: 193/255))
                             .cornerRadius(16)
                             .shadow(color: .black.opacity(0.05), radius: 5)
                             
                             // 4. Medical section (LAST)
-                            Text("מידע רפואי").font(.headline.bold()).padding(.top, 8)
+                            Text("מידע רפואי").font(.headline.bold()).padding(.top, 8).foregroundColor(.black)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
                                     Text(pet.isMicrochipped ? "יש שבב ✅" : "אין שבב ❌")
-                                        .foregroundColor(Color(white: 0.1)) // #1A1A1A
+                                        .foregroundColor(.black) // #1A1A1A
                                         .font(.body)
                                     Spacer()
                                 }
@@ -1176,7 +1177,7 @@ struct PetDetailOverlayView: View {
                                 
                                 HStack {
                                     Text(pet.isNeutered ? "מסורס ✅" : "לא מסורס ❌")
-                                        .foregroundColor(Color(white: 0.1)) // #1A1A1A
+                                        .foregroundColor(.black) // #1A1A1A
                                         .font(.body)
                                     Spacer()
                                 }
@@ -1185,11 +1186,11 @@ struct PetDetailOverlayView: View {
                                 HStack {
                                     if post.medication {
                                         Text("תרופות: \(post.medicationInfo ?? "")")
-                                            .foregroundColor(Color(white: 0.1)) // #1A1A1A
+                                            .foregroundColor(.black) // #1A1A1A
                                             .font(.body)
                                     } else {
                                         Text("ללא תרופות ✅")
-                                            .foregroundColor(Color(white: 0.1)) // #1A1A1A
+                                            .foregroundColor(.black) // #1A1A1A
                                             .font(.body)
                                     }
                                     Spacer()
@@ -1197,7 +1198,7 @@ struct PetDetailOverlayView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             }
                             .padding()
-                            .background(Color.white)
+                            .background(Color(red: 199/255, green: 198/255, blue: 193/255))
                             .cornerRadius(16)
                             .shadow(color: .black.opacity(0.05), radius: 5)
                         }
@@ -1206,7 +1207,7 @@ struct PetDetailOverlayView: View {
                     }
                     .padding(.vertical)
                 }
-                .background(Color(.systemGroupedBackground))
+                .background(Color.white.edgesIgnoringSafeArea(.all))
             }
             
             // LIGHTBOX OVERLAY
