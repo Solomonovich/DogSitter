@@ -91,9 +91,7 @@ struct SocialRoleSelectionView: View {
                 .padding(.top, 10)
                 
                 if isLoading {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .orange))
-                        .scaleEffect(1.5)
+                    LottieProgressView(size: 80)
                         .padding(.top, 20)
                 }
                 

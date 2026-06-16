@@ -249,15 +249,10 @@ class SocialAuthManager: NSObject, ObservableObject, ASAuthorizationControllerDe
 // Reusable Shared Social Buttons Component spanning LoginView & SignUpView
 struct SocialAuthButtonsView: View {
     @StateObject private var socialManager = SocialAuthManager()
+    @Binding var isLoading: Bool
     
     var body: some View {
         VStack(spacing: 15) {
-            
-            if socialManager.isProcessing {
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .orange))
-                    .padding()
-            }
             
             if !socialManager.errorMessage.isEmpty {
                 Text(socialManager.errorMessage)
@@ -267,15 +262,7 @@ struct SocialAuthButtonsView: View {
                     .padding(.horizontal)
             }
             
-            HStack(spacing: 15) {
-                VStack { Divider().background(Color.gray.opacity(0.3)) }
-                Text("או")
-                    .foregroundColor(.secondary)
-                    .font(.subheadline)
-                VStack { Divider().background(Color.gray.opacity(0.3)) }
-            }
-            .padding(.horizontal, 40)
-            .padding(.vertical, 10)
+
             
             Button(action: { socialManager.startSignInWithAppleFlow() }) {
                 HStack {
@@ -294,6 +281,16 @@ struct SocialAuthButtonsView: View {
                 .cornerRadius(15)
             }
             .padding(.horizontal, 30)
+            
+            HStack(spacing: 15) {
+                VStack { Divider().background(Color.gray.opacity(0.3)) }
+                Text("או")
+                    .foregroundColor(.secondary)
+                    .font(.subheadline)
+                VStack { Divider().background(Color.gray.opacity(0.3)) }
+            }
+            .padding(.horizontal, 40)
+            .padding(.vertical, 10)
             
             Button(action: { socialManager.signInWithGoogle() }) {
                 HStack {
@@ -317,6 +314,9 @@ struct SocialAuthButtonsView: View {
                 )
             }
             .padding(.horizontal, 30)
+        }
+        .onChange(of: socialManager.isProcessing) { isProcessing in
+            isLoading = isProcessing
         }
         .environment(\.layoutDirection, .rightToLeft)
     }

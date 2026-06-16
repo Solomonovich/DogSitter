@@ -403,7 +403,7 @@ struct ChatDetailView: View {
                         
                         if isUploadingPhoto {
                             HStack {
-                                ProgressView()
+                                LottieProgressView(size: 60)
                                     .padding(.horizontal)
                                 Text("מעלה תמונה...")
                                     .font(.caption)
@@ -769,7 +769,7 @@ struct ChatBubbleView: View {
                         RoundedRectangle(cornerRadius: 16)
                             .fill(Color.gray.opacity(0.2))
                             .frame(width: 200, height: 200)
-                            .overlay(ProgressView())
+                            .overlay(LottieProgressView(size: 40))
                     }
                 }
                 .onTapGesture {
@@ -828,7 +828,7 @@ struct ChatUserProfileView: View {
                 Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all)
                 
                 if isLoading {
-                    ProgressView()
+                    LottieProgressView(size: 80)
                 } else if let user = user {
                     ScrollView {
                         VStack(spacing: 20) {
@@ -917,7 +917,7 @@ struct ChatUserProfileView: View {
                                                     if let img = phase.image {
                                                         img.resizable().aspectRatio(contentMode: .fill)
                                                     } else {
-                                                        ProgressView()
+                                                        LottieProgressView(size: 40)
                                                     }
                                                 }
                                                 .frame(maxWidth: .infinity)
@@ -931,7 +931,7 @@ struct ChatUserProfileView: View {
                                 if hasMorePhotos {
                                     Button(action: loadMorePhotos) {
                                         if isLoadingMore {
-                                            ProgressView()
+                                            LottieProgressView(size: 40)
                                         } else {
                                             Text("טען עוד")
                                                 .font(.system(size: 15, weight: .medium))
@@ -1129,7 +1129,7 @@ struct WalkBubbleContent: View {
                         Rectangle()
                             .fill(Color(hex: "#E0E0E0"))
                             .frame(height: 150)
-                            .overlay(ProgressView())
+                            .overlay(LottieProgressView(size: 40))
                     }
                     
                     HStack {

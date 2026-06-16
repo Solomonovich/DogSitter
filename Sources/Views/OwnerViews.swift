@@ -178,7 +178,7 @@ struct PetSquareCard: View {
                             .frame(width: 120, height: 120)
                             .background(Color(.systemGray6))
                         } else {
-                            ProgressView()
+                            LottieProgressView(size: 36)
                                 .frame(width: 120, height: 120)
                                 .background(Color(.systemGray6))
                         }
@@ -410,7 +410,7 @@ struct AddPetView: View {
             
             Button(action: savePet) {
                 if isUploading {
-                    ProgressView()
+                    LottieProgressView(size: 80)
                         .frame(maxWidth: .infinity, alignment: .center)
                 } else {
                     Text("שמור")
@@ -569,7 +569,7 @@ struct PhotoSlotView: View {
                         } else if phase.error != nil {
                             Color.red
                         } else {
-                            ProgressView()
+                            LottieProgressView(size: 36)
                         }
                     }
                 }

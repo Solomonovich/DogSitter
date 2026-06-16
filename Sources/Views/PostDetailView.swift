@@ -170,7 +170,7 @@ struct PostDetailView: View {
                     showConfirm = true
                 }) {
                     if isSubmitting {
-                        ProgressView()
+                        LottieProgressView(size: 80)
                             .frame(maxWidth: .infinity, alignment: .center)
                     } else {
                         Text("אני מעוניין")
@@ -223,7 +223,7 @@ struct PetAvatarCircle: View {
                     } else if phase.error != nil {
                         Color.gray
                     } else {
-                        ProgressView()
+                        LottieProgressView(size: 80)
                     }
                 }
             } else {

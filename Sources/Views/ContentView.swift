@@ -35,9 +35,7 @@ struct ContentView: View {
                     .foregroundColor(.white)
                     .cornerRadius(8)
                 } else {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .orange))
-                        .scaleEffect(1.5)
+                    LottieProgressView(size: 100)
                     Text("טוען פרופיל...")
                         .foregroundColor(.secondary)
                         .padding(.top, 10)

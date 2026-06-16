@@ -117,7 +117,7 @@ struct EditProfileView: View {
             
             Button(action: saveProfile) {
                 if isSaving {
-                    ProgressView()
+                    LottieProgressView(size: 80)
                         .frame(maxWidth: .infinity, alignment: .center)
                 } else {
                     Text("שמור")

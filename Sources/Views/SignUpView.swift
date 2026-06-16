@@ -17,7 +17,7 @@ struct SignUpView: View {
     
     var body: some View {
         ZStack {
-            LinearGradient(gradient: Gradient(colors: [Color.orange.opacity(0.1), Color.blue.opacity(0.1)]), startPoint: .topLeading, endPoint: .bottomTrailing)
+            LinearGradient(gradient: Gradient(colors: [Color.blue.opacity(0.1), Color.cyan.opacity(0.1)]), startPoint: .topLeading, endPoint: .bottomTrailing)
                 .ignoresSafeArea()
             
             ScrollView {
@@ -25,7 +25,7 @@ struct SignUpView: View {
                     VStack(spacing: 12) {
                         Text("הרשמה")
                             .font(.system(size: 42, weight: .heavy, design: .rounded))
-                            .foregroundColor(.orange)
+                            .foregroundColor(.blue)
                         
                         Text("הצטרף למשפחת דוגסיטר")
                             .font(.headline)
@@ -82,20 +82,15 @@ struct SignUpView: View {
                     
                     Button(action: handleSignUp) {
                         HStack {
-                            if isLoading {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            } else {
-                                Text("הירשם")
-                                    .font(.title2.bold())
-                            }
+                            Text("הירשם")
+                                .font(.title2.bold())
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(LinearGradient(gradient: Gradient(colors: [.orange, .yellow]), startPoint: .leading, endPoint: .trailing))
+                        .background(LinearGradient(gradient: Gradient(colors: [.blue, .cyan]), startPoint: .leading, endPoint: .trailing))
                         .foregroundColor(.white)
-                        .cornerRadius(15)
-                        .shadow(color: .orange.opacity(0.4), radius: 10, x: 0, y: 5)
+                        .cornerRadius(25)
+                        .shadow(color: .blue.opacity(0.4), radius: 10, x: 0, y: 5)
                     }
                     .padding(.horizontal, 30)
                     .disabled(isLoading)
@@ -109,12 +104,18 @@ struct SignUpView: View {
                     }
                     .padding(.top, 10)
                     
-                    SocialAuthButtonsView()
+                    SocialAuthButtonsView(isLoading: $isLoading)
                     
                     Spacer()
                 }
+                }
+                
+                if isLoading {
+                    Color.black.opacity(0.3)
+                        .ignoresSafeArea()
+                    LottieProgressView(size: 100)
+                }
             }
-        }
         .environment(\.layoutDirection, .rightToLeft)
         .navigationBarHidden(true)
     }

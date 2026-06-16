@@ -12,7 +12,7 @@ struct LoginView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                LinearGradient(gradient: Gradient(colors: [Color.orange.opacity(0.1), Color.blue.opacity(0.1)]), startPoint: .topLeading, endPoint: .bottomTrailing)
+                LinearGradient(gradient: Gradient(colors: [Color.blue.opacity(0.1), Color.cyan.opacity(0.1)]), startPoint: .topLeading, endPoint: .bottomTrailing)
                     .ignoresSafeArea()
                 
                 ScrollView {
@@ -20,8 +20,8 @@ struct LoginView: View {
                         VStack(spacing: 12) {
                             Text("דוגסיטר")
                                 .font(.system(size: 54, weight: .heavy, design: .rounded))
-                                .foregroundColor(.orange)
-                                .shadow(color: .orange.opacity(0.3), radius: 5, x: 0, y: 5)
+                                .foregroundColor(.blue)
+                                .shadow(color: .blue.opacity(0.3), radius: 5, x: 0, y: 5)
                             
                             Text("האפליקציה הטובה ביותר לחיית עזרך")
                                 .font(.headline)
@@ -54,20 +54,15 @@ struct LoginView: View {
                         
                         Button(action: handleLogin) {
                             HStack {
-                                if isLoading {
-                                    ProgressView()
-                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                } else {
-                                    Text("התחבר")
-                                        .font(.title2.bold())
-                                }
+                                Text("התחבר")
+                                    .font(.title2.bold())
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
-                            .background(LinearGradient(gradient: Gradient(colors: [.orange, .yellow]), startPoint: .leading, endPoint: .trailing))
+                            .background(LinearGradient(gradient: Gradient(colors: [.blue, .cyan]), startPoint: .leading, endPoint: .trailing))
                             .foregroundColor(.white)
-                            .cornerRadius(15)
-                            .shadow(color: .orange.opacity(0.4), radius: 10, x: 0, y: 5)
+                            .cornerRadius(25)
+                            .shadow(color: .blue.opacity(0.4), radius: 10, x: 0, y: 5)
                         }
                         .padding(.horizontal, 30)
                         .disabled(isLoading || email.isEmpty || password.isEmpty)
@@ -75,7 +70,7 @@ struct LoginView: View {
                         
                         Button(action: resetPassword) {
                             Text("שכחתי סיסמה")
-                                .foregroundColor(.orange)
+                                .foregroundColor(.blue)
                                 .font(.subheadline)
                         }
                         
@@ -88,10 +83,16 @@ struct LoginView: View {
                             SignUpView()
                         }
                         
-                        SocialAuthButtonsView()
+                        SocialAuthButtonsView(isLoading: $isLoading)
                         
                         Spacer()
                     }
+                }
+                
+                if isLoading {
+                    Color.black.opacity(0.3)
+                        .ignoresSafeArea()
+                    LottieProgressView(size: 100)
                 }
             }
             .navigationBarHidden(true)

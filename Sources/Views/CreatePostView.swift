@@ -170,7 +170,7 @@ struct OwnerCreatePostView: View {
                 
                 Button(action: publishPost) {
                     if isPublishing {
-                        ProgressView()
+                        LottieProgressView(size: 36)
                             .frame(maxWidth: .infinity, alignment: .center)
                     } else {
                         Text("פרסם פוסט")
@@ -186,6 +186,9 @@ struct OwnerCreatePostView: View {
                 
             }
             .navigationTitle("פוסט חדש")
+            .onTapGesture {
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            }
         }
     }
     

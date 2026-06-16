@@ -906,7 +906,7 @@ struct DogCardView: View {
                             } else if phase.error != nil {
                                 Image(systemName: "pawprint.fill").foregroundColor(.gray)
                             } else {
-                                ProgressView()
+                                LottieProgressView(size: 60)
                             }
                         }
                     } else {
@@ -1018,7 +1018,7 @@ struct PostDetailSheetView: View {
                     }
                 }) {
                     if isSubmitting {
-                        ProgressView().progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        LottieProgressView(size: 36)
                     } else {
                         Text("אני מעוניין")
                     }
@@ -1244,7 +1244,7 @@ struct PetDetailOverlayView: View {
                                     .aspectRatio(contentMode: .fit)
                                     .frame(maxWidth: .infinity)
                             } else {
-                                ProgressView().tint(.white)
+                                LottieProgressView(size: 36)
                             }
                         }
                         

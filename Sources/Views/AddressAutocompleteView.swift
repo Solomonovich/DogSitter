@@ -68,7 +68,7 @@ struct AddressAutocompleteField: View {
                 }
                 
                 if viewModel.isSearching {
-                    ProgressView()
+                    LottieProgressView(size: 40)
                         .padding(.trailing, 8)
                 }
             }

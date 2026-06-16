@@ -174,7 +174,7 @@ struct EditPostView: View {
             Section {
                 Button(action: saveChanges) {
                     if isPublishing {
-                        ProgressView()
+                        LottieProgressView(size: 36)
                             .frame(maxWidth: .infinity, alignment: .center)
                     } else {
                         Text("שמור שינויים")
@@ -190,7 +190,7 @@ struct EditPostView: View {
                 
                 Button(action: { showDeleteAlert = true }) {
                     if isDeleting {
-                        ProgressView()
+                        LottieProgressView(size: 36)
                             .frame(maxWidth: .infinity, alignment: .center)
                     } else {
                         Text("מחק פוסט")
