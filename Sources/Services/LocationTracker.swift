@@ -3,6 +3,14 @@ import CoreLocation
 import Combine
 import MapKit
 
+// F-24: keep diagnostic logging out of release builds (device/console logs can be
+// harvested). Sensitive values (coordinates, addresses) are never logged.
+private func dbg(_ message: @autoclosure () -> String) {
+#if DEBUG
+    print(message())
+#endif
+}
+
 class LocationTracker: NSObject, ObservableObject, CLLocationManagerDelegate {
     static let shared = LocationTracker()
     
@@ -46,7 +54,7 @@ class LocationTracker: NSObject, ObservableObject, CLLocationManagerDelegate {
                 self.elapsedSeconds += 1
             }
         }
-        print("Started Location Tracking")
+        dbg("Started Location Tracking")
     }
     
     func stopTracking() {
@@ -54,7 +62,7 @@ class LocationTracker: NSObject, ObservableObject, CLLocationManagerDelegate {
         timer = nil
         isTracking = false
         manager.stopUpdatingLocation()
-        print("Stopped Location Tracking")
+        dbg("Stopped Location Tracking")
     }
     
     func resumeTracking() {
@@ -70,7 +78,7 @@ class LocationTracker: NSObject, ObservableObject, CLLocationManagerDelegate {
                     self.elapsedSeconds += 1
                 }
             }
-            print("Resumed Location Tracking")
+            dbg("Resumed Location Tracking")
         }
     }
     
