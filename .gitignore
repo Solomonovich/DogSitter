@@ -1,0 +1,21 @@
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+*.xcworkspacedata
+xcuserdata/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Node (not part of the iOS app)
+node_modules/
+package-lock.json
+package.json
+
+# Generated
+SECURITY_AUDIT.md
+
+# OS
+.DS_Store

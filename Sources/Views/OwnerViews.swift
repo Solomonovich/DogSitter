@@ -172,7 +172,7 @@ struct PetSquareCard: View {
                                     .resizable()
                                     .scaledToFit()
                                     .padding(20)
-                                    .foregroundColor(.orange)
+                                    .foregroundColor(.blue)
                                 Spacer()
                             }
                             .frame(width: 120, height: 120)
@@ -192,7 +192,7 @@ struct PetSquareCard: View {
                             .resizable()
                             .scaledToFit()
                             .padding(20)
-                            .foregroundColor(.orange)
+                            .foregroundColor(.blue)
                         Spacer()
                     }
                     .frame(width: 120, height: 120)
@@ -410,7 +410,7 @@ struct AddPetView: View {
             
             Button(action: savePet) {
                 if isUploading {
-                    LottieProgressView(size: 80)
+                    LottieProgressView(size: 36)
                         .frame(maxWidth: .infinity, alignment: .center)
                 } else {
                     Text("שמור")

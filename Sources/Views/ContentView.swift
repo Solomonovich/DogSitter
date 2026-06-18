@@ -61,18 +61,24 @@ struct ContactDetailsOnboardingView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(white: 0.98).edgesIgnoringSafeArea(.all)
+                LinearGradient(gradient: Gradient(colors: [Color.blue.opacity(0.1), Color.cyan.opacity(0.1)]), startPoint: .topLeading, endPoint: .bottomTrailing)
+                    .ignoresSafeArea()
                 
                 ScrollView {
                     VStack(spacing: 24) {
                         VStack(spacing: 8) {
+                            Text("דוגסיטר")
+                                .font(.system(size: 54, weight: .heavy, design: .rounded))
+                                .foregroundColor(.blue)
+                                .shadow(color: .blue.opacity(0.3), radius: 5, x: 0, y: 5)
+                            
                             Text("פרטי יצירת קשר")
-                                .font(.system(size: 28, weight: .bold))
-                                .foregroundColor(Color(white: 0.1))
+                                .font(.system(size: 22, weight: .bold))
+                                .foregroundColor(.primary)
                             
                             Text("נצטרך את הפרטים האלו כדי לחבר אותך עם משתמשים אחרים")
                                 .font(.system(size: 16))
-                                .foregroundColor(.gray)
+                                .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal)
                         }
@@ -83,7 +89,8 @@ struct ContactDetailsOnboardingView: View {
                             VStack(alignment: .trailing, spacing: 8) {
                                 Text("מספר טלפון")
                                     .font(.headline)
-                                    .foregroundColor(Color(white: 0.2))
+                                    .foregroundColor(.gray)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                                 
                                 HStack {
                                     Image(systemName: "phone.fill").foregroundColor(.gray)
@@ -92,7 +99,7 @@ struct ContactDetailsOnboardingView: View {
                                         .multilineTextAlignment(.trailing)
                                 }
                                 .padding()
-                                .background(Color.white)
+                                .background(Color(.systemBackground))
                                 .cornerRadius(15)
                                 .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
                             }
@@ -101,7 +108,8 @@ struct ContactDetailsOnboardingView: View {
                             VStack(alignment: .trailing, spacing: 8) {
                                 Text("כתובת")
                                     .font(.headline)
-                                    .foregroundColor(Color(white: 0.2))
+                                    .foregroundColor(.gray)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                                 
                                 AddressAutocompleteField(placeholder: "רחוב, עיר", text: $address)
                             }
@@ -129,17 +137,20 @@ struct ContactDetailsOnboardingView: View {
                         }) {
                             HStack {
                                 if isLoading {
-                                    ProgressView().tint(.white)
+                                    LottieProgressView(size: 36)
                                 } else {
                                     Text("המשך")
                                         .font(.headline)
+                                        .bold()
                                 }
                             }
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(isValid ? Color.blue : Color.gray)
+                            .background(LinearGradient(gradient: Gradient(colors: [.blue, .cyan]), startPoint: .leading, endPoint: .trailing))
                             .cornerRadius(15)
+                            .shadow(color: .blue.opacity(0.4), radius: 10, x: 0, y: 5)
+                            .opacity(isValid ? 1.0 : 0.5)
                         }
                         .disabled(!isValid || isLoading)
                         .padding(.horizontal, 24)

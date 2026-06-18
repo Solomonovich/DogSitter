@@ -16,13 +16,13 @@ struct SocialRoleSelectionView: View {
     
     var body: some View {
         ZStack {
-            LinearGradient(gradient: Gradient(colors: [Color.orange.opacity(0.1), Color.blue.opacity(0.1)]), startPoint: .topLeading, endPoint: .bottomTrailing)
+            LinearGradient(gradient: Gradient(colors: [Color.blue.opacity(0.1), Color.cyan.opacity(0.1)]), startPoint: .topLeading, endPoint: .bottomTrailing)
                 .ignoresSafeArea()
             
             VStack(spacing: 40) {
                 Text("דוגסיטר")
                     .font(.system(size: 40, weight: .black, design: .rounded))
-                    .foregroundColor(.orange)
+                    .foregroundColor(.blue)
                     .multilineTextAlignment(.center)
                     .padding(.top, 50)
                 
@@ -44,7 +44,7 @@ struct SocialRoleSelectionView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 20)
-                        .background(Color.orange)
+                        .background(Color.blue)
                         .foregroundColor(.white)
                         .cornerRadius(15)
                         .opacity(selectedRole == .sitter ? 1.0 : 0.6)
@@ -83,7 +83,7 @@ struct SocialRoleSelectionView: View {
                         .font(.title3.bold())
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(Color.orange)
+                        .background(Color.blue)
                         .foregroundColor(.white)
                         .cornerRadius(15)
                 }

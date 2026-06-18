@@ -7,7 +7,6 @@ struct SignUpView: View {
     
     @State private var fullName = ""
     @State private var email = ""
-    @State private var address = ""
     @State private var password = ""
     @State private var confirmPassword = ""
     @State private var selectedRole: UserRole = .sitter
@@ -36,7 +35,6 @@ struct SignUpView: View {
                     
                     VStack(spacing: 20) {
                         CustomTextField(icon: "person.fill", placeholder: "שם מלא", text: $fullName)
-                        AddressAutocompleteField(placeholder: "כתובת", text: $address)
                         CustomTextField(icon: "envelope.fill", placeholder: "אימייל", text: $email, keyboardType: .emailAddress)
                         
                         HStack {
@@ -126,11 +124,6 @@ struct SignUpView: View {
             return
         }
         
-        guard !address.isEmpty else {
-            errorMessage = "נא להזין כתובת"
-            return
-        }
-        
         guard password.count >= 6 else {
             errorMessage = "הסיסמה חייבת להכיל לפחות 6 תווים."
             return
@@ -159,9 +152,9 @@ struct SignUpView: View {
             let data: [String: Any] = [
                 "id": uid,
                 "name": self.fullName,
-                "email": self.email,
-                "address": self.address,
+                "fullName": self.fullName,
                 "role": self.selectedRole.rawValue,
+                "email": self.email,
                 "username": username,
                 "createdAt": Timestamp()
             ]

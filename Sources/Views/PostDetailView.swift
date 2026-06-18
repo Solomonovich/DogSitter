@@ -170,14 +170,14 @@ struct PostDetailView: View {
                     showConfirm = true
                 }) {
                     if isSubmitting {
-                        LottieProgressView(size: 80)
+                        LottieProgressView(size: 36)
                             .frame(maxWidth: .infinity, alignment: .center)
                     } else {
                         Text("אני מעוניין")
                             .font(.title2.bold())
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(Color.orange)
+                            .background(Color.blue)
                             .foregroundColor(.white)
                             .cornerRadius(15)
                             .shadow(radius: 5)
@@ -223,13 +223,13 @@ struct PetAvatarCircle: View {
                     } else if phase.error != nil {
                         Color.gray
                     } else {
-                        LottieProgressView(size: 80)
+                        LottieProgressView(size: 25)
                     }
                 }
             } else {
                 Circle()
                     .fill(Color(.systemGray5))
-                    .overlay(Image(systemName: "pawprint.fill").foregroundColor(.orange))
+                    .overlay(Image(systemName: "pawprint.fill").foregroundColor(.blue))
             }
         }
         .frame(width: 50, height: 50)

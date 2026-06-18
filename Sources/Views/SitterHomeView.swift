@@ -65,7 +65,7 @@ struct SitterHomeView: View {
                                         Text(type.rawValue)
                                             .padding(.horizontal, 16)
                                             .padding(.vertical, 8)
-                                            .background(selectedTypes.contains(type) ? Color.orange : Color(.systemGray5))
+                                            .background(selectedTypes.contains(type) ? Color.blue : Color(.systemGray5))
                                             .foregroundColor(selectedTypes.contains(type) ? .white : .primary)
                                             .cornerRadius(20)
                                     }
@@ -78,7 +78,7 @@ struct SitterHomeView: View {
                                 .font(.headline)
                                 .frame(maxWidth: .infinity)
                                 .padding()
-                                .background(Color.orange)
+                                .background(Color.blue)
                                 .foregroundColor(.white)
                                 .cornerRadius(10)
                         }
@@ -137,8 +137,8 @@ struct SitterHomeView: View {
                                         Text("חפש \(type.rawValue)")
                                             .font(.caption.bold())
                                             .padding(8)
-                                            .background(Color.orange.opacity(0.2))
-                                            .foregroundColor(.orange)
+                                            .background(Color.blue.opacity(0.2))
+                                            .foregroundColor(.blue)
                                             .cornerRadius(8)
                                     }
                                 }
