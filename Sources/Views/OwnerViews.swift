@@ -5,6 +5,8 @@ import GoogleSignIn
 struct OwnerProfileView: View {
     @EnvironmentObject var appState: AppState
     @Environment(\.theme) private var theme
+    @State private var showDeleteConfirm = false
+    @State private var deleteErrorMessage: String?
 
     var body: some View {
         NavigationView {
@@ -124,13 +126,35 @@ struct OwnerProfileView: View {
                             }
                         }
                         .buttonStyle(DestructiveButtonStyle(fullWidth: false))
-                        .padding(.bottom, theme.spacing.lg)
+                        .padding(.bottom, theme.spacing.sm)
+
+                        // F-27: account deletion (required for App Store compliance).
+                        Button("מחק חשבון") { showDeleteConfirm = true }
+                            .font(theme.typography.subheadline)
+                            .foregroundStyle(theme.color.error)
+                            .padding(.bottom, theme.spacing.lg)
                     }
                 }
             }
             .scrollContentBackground(.hidden)
             .background(theme.color.background.edgesIgnoringSafeArea(.all))
             .navigationTitle("הפרופיל שלי")
+            .alert("מחיקת חשבון", isPresented: $showDeleteConfirm) {
+                Button("מחק", role: .destructive) {
+                    Task { if let msg = await appState.deleteAccount() { deleteErrorMessage = msg } }
+                }
+                Button("ביטול", role: .cancel) {}
+            } message: {
+                Text("פעולה זו תמחק את חשבונך לצמיתות ולא ניתן לבטלה.")
+            }
+            .alert("שגיאה", isPresented: Binding(
+                get: { deleteErrorMessage != nil },
+                set: { if !$0 { deleteErrorMessage = nil } }
+            )) {
+                Button("סגור", role: .cancel) { deleteErrorMessage = nil }
+            } message: {
+                Text(deleteErrorMessage ?? "")
+            }
         }
     }
 }

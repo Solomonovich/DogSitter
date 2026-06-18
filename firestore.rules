@@ -68,6 +68,12 @@ service cloud.firestore {
       // Account deletion is handled via reauth + a Cloud Function (doc cleanup),
       // never a direct client delete.
       allow delete: if false;
+
+      // F-22: a user's own block list. Only the owner can read/manage it.
+      match /blocked/{blockedId} {
+        allow read, create, delete: if signedIn() && request.auth.uid == uid;
+        allow update: if false;
+      }
     }
 
     // ----------------------------------------------------------------- pets ---
@@ -218,6 +224,15 @@ service cloud.firestore {
         && request.resource.data.rating <= 5;
       // Reputation aggregation (averageRating/totalReviews) is a Function's job.
       allow update, delete: if false;
+    }
+
+    // -------------------------------------------------------------- reports ---
+    // F-22: abuse reports. A user may file a report as themselves; reports are
+    // reviewed out-of-band (no client read/update/delete).
+    match /reports/{reportId} {
+      allow create: if signedIn()
+        && request.auth.uid == request.resource.data.reporterId;
+      allow read, update, delete: if false;
     }
 
     // Anything not matched above is denied by default (no catch-all needed).
