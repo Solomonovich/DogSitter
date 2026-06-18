@@ -1,0 +1,225 @@
+rules_version = '2';
+
+// DogSitter Firestore Security Rules
+// -----------------------------------------------------------------------------
+// This is the real authorization boundary for the app. The Swift/SwiftUI client
+// talks directly to Firestore, so every UI-level "owner-only" check is cosmetic;
+// these rules are what actually stops one authenticated user from reading or
+// writing another user's data.
+//
+// Conventions:
+//   - Ownership/identity is always derived from request.auth.uid, never trusted
+//     from a client-supplied field.
+//   - Privileged/integrity fields (role, reputation, status, counters, senderId)
+//     are made immutable or constrained here.
+//   - verified() gates the three "sensitive" actions per product decision:
+//     creating a post, expressing interest, starting a walk. Sign-in, browsing
+//     and chatting stay open. Social logins already carry email_verified == true.
+//
+// ACCEPTED RESIDUALS (documented, handled in the follow-up Cloud Functions PR):
+//   - users docs stay readable by any signed-in user because names/photos/ratings
+//     are needed across the app, and Firestore rules cannot hide individual fields
+//     (phone/address) on read. The hard fix is to split contact fields out / vend
+//     them via a Function to approved counterparts only.
+//   - Real payment processing, reputation aggregation, atomic interest counting,
+//     rate-limiting and App Check enforcement also require Cloud Functions.
+// -----------------------------------------------------------------------------
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function verified() {
+      return signedIn() && request.auth.token.email_verified == true;
+    }
+
+    // ---------------------------------------------------------------- users ---
+    match /users/{uid} {
+      allow read: if signedIn();
+
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.role in ['owner', 'sitter', 'needsRole', 'none']
+        && !('averageRating' in request.resource.data)
+        && !('totalReviews' in request.resource.data);
+
+      // Normal profile edit: self only, and only non-privileged fields may change.
+      // diff().affectedKeys() lists ONLY keys whose value actually changed, so a
+      // whole-document write that re-sends unchanged role/email/reputation passes,
+      // while any attempt to mutate those fields is rejected (mass-assignment, F-01).
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['name', 'fullName', 'username', 'address', 'phone', 'photoURL', 'age']);
+
+      // One-time role assignment during onboarding (e.g. social-login role picker
+      // overwrites the auto-created needsRole document). Cannot flip owner<->sitter
+      // later because it requires the prior role to be exactly 'needsRole'.
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && resource.data.role == 'needsRole'
+        && request.resource.data.role in ['owner', 'sitter']
+        && !('averageRating' in request.resource.data)
+        && !('totalReviews' in request.resource.data);
+
+      // Account deletion is handled via reauth + a Cloud Function (doc cleanup),
+      // never a direct client delete.
+      allow delete: if false;
+    }
+
+    // ----------------------------------------------------------------- pets ---
+    match /pets/{petId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.auth.uid == request.resource.data.ownerId;
+      allow update: if signedIn()
+        && request.auth.uid == resource.data.ownerId
+        && request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if signedIn()
+        && request.auth.uid == resource.data.ownerId;
+    }
+
+    // ---------------------------------------------------------------- posts ---
+    match /posts/{postId} {
+      // Open to any signed-in user: the browse feed/map needs all open posts.
+      // (F-05 exact-location read exposure is an accepted residual per decision.)
+      allow read: if signedIn();
+
+      allow create: if verified()
+        && request.auth.uid == request.resource.data.ownerId
+        && request.resource.data.status == 'open'
+        && request.resource.data.interestedCount == 0;
+
+      // Owner may edit and approve their own post; ownerId is immutable. This is
+      // the only write that may change status (open -> approved) or set
+      // approvedSitterId, and only by the post owner (blocks IDOR + forged
+      // approval, F-02 / F-06).
+      allow update: if signedIn()
+        && request.auth.uid == resource.data.ownerId
+        && request.resource.data.ownerId == resource.data.ownerId;
+
+      // A verified sitter expressing interest may bump interestedCount by exactly
+      // +1 and change nothing else (blocks counter inflation / feed gaming, F-11).
+      allow update: if verified()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['interestedCount'])
+        && request.resource.data.interestedCount == resource.data.interestedCount + 1;
+
+      allow delete: if signedIn()
+        && request.auth.uid == resource.data.ownerId;
+
+      match /interested/{sitterUid} {
+        allow read: if signedIn();
+        allow create: if verified()
+          && request.auth.uid == sitterUid
+          && request.resource.data.sitterId == sitterUid;
+        allow delete: if signedIn() && request.auth.uid == sitterUid;
+        allow update: if false;
+      }
+    }
+
+    // ---------------------------------------------------------------- walks ---
+    match /walks/{walkId} {
+      // Only the two parties may read a walk -> closes the live-GPS tracking leak
+      // (F-14) without changing the owner's live map (the owner is a participant).
+      // Written as a disjunction (not `uid in [..]`) so that LIST queries are
+      // provable from a single-field filter: a participant's chat-hours query must
+      // therefore also constrain sitterId/ownerId == their own uid (see the client
+      // getTotalWalkHoursForChat, scoped by the caller's role).
+      allow read: if signedIn()
+        && (resource.data.sitterId == request.auth.uid
+            || resource.data.ownerId == request.auth.uid);
+
+      allow create: if verified()
+        && request.auth.uid == request.resource.data.sitterId
+        && request.resource.data.status == 'active';
+
+      // Only the assigned sitter may update, only while active; identity & start
+      // are frozen, and a completed walk becomes immutable (F-04).
+      allow update: if signedIn()
+        && request.auth.uid == resource.data.sitterId
+        && resource.data.status == 'active'
+        && request.resource.data.sitterId == resource.data.sitterId
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.startTime == resource.data.startTime;
+
+      allow delete: if false;
+    }
+
+    // ---------------------------------------------------------------- chats ---
+    match /chats/{chatId} {
+      // Disjunction (not `uid in [..]`) so LIST queries scoped by ownerId==uid or
+      // sitterId==uid are statically provable (the existing chat listeners do exactly
+      // that). For single-document gets/updates it evaluates against the real doc.
+      function isParticipant() {
+        return signedIn()
+          && (resource.data.ownerId == request.auth.uid
+              || resource.data.sitterId == request.auth.uid);
+      }
+
+      // Private to the two participants (F-03).
+      allow read: if isParticipant();
+
+      allow create: if signedIn()
+        && request.auth.uid in [request.resource.data.ownerId, request.resource.data.sitterId]
+        && request.resource.data.approved == false;
+
+      // Participants may update preview/archived fields; only the OWNER may flip
+      // approved -> true (blocks sitter self-approval, F-06). Participant ids frozen.
+      allow update: if isParticipant()
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.sitterId == resource.data.sitterId
+        && (
+          request.resource.data.approved == resource.data.approved
+          || (request.auth.uid == resource.data.ownerId && request.resource.data.approved == true)
+        );
+
+      allow delete: if false;
+
+      match /messages/{msgId} {
+        function chatData() {
+          return get(/databases/$(database)/documents/chats/$(chatId)).data;
+        }
+        function isChatParticipant() {
+          return signedIn() && request.auth.uid in [chatData().ownerId, chatData().sitterId];
+        }
+
+        allow read: if isChatParticipant();
+
+        // senderId cannot be spoofed (F-07); the trusted "payment" banner may only
+        // be authored by the post owner (F-06 interim until the payment Function).
+        allow create: if isChatParticipant()
+          && request.resource.data.senderId == request.auth.uid
+          && (
+            request.resource.data.type != 'payment'
+            || request.auth.uid == chatData().ownerId
+          );
+
+        // Messages are immutable from clients (walk status is read live from the
+        // walk doc, so the old in-message update is dropped client-side).
+        allow update: if false;
+
+        // A user may delete only their own message (F-08).
+        allow delete: if isChatParticipant()
+          && resource.data.senderId == request.auth.uid;
+      }
+    }
+
+    // -------------------------------------------------------------- reviews ---
+    match /reviews/{reviewId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.auth.uid == request.resource.data.ownerId
+        && request.resource.data.ownerId != request.resource.data.sitterId
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5;
+      // Reputation aggregation (averageRating/totalReviews) is a Function's job.
+      allow update, delete: if false;
+    }
+
+    // Anything not matched above is denied by default (no catch-all needed).
+  }
+}
