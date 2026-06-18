@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import SecurityKit
 
 class CloudinaryHelper {
     static let cloudName = "dns0htaph"
@@ -22,8 +23,11 @@ class CloudinaryHelper {
         image.draw(in: CGRect(origin: .zero, size: newSize))
         let resizedImage = UIGraphicsGetImageFromCurrentImageContext()
         UIGraphicsEndImageContext()
-        
-        return resizedImage?.jpegData(compressionQuality: 0.8)
+
+        guard let data = resizedImage?.jpegData(compressionQuality: 0.8) else { return nil }
+        // F-15: explicitly strip EXIF/GPS/IPTC metadata before upload so photos taken
+        // at home can never leak their capture location through the uploaded file.
+        return ImageMetadata.stripped(from: data)
     }
     
     static func uploadPhoto(image: UIImage, userId: String, petId: String, index: Int) async throws -> String {

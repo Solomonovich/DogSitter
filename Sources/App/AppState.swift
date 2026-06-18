@@ -5,6 +5,14 @@ import FirebaseFirestore
 import CoreLocation
 import MapKit
 
+// F-24: keep diagnostic logging out of release builds. Error objects and asset
+// URLs can carry PII, so they are only printed in DEBUG.
+private func dbg(_ message: @autoclosure () -> String) {
+#if DEBUG
+    print(message())
+#endif
+}
+
 @MainActor
 class AppState: ObservableObject {
     @Published var isAuthenticated: Bool = false
@@ -66,6 +74,9 @@ class AppState: ObservableObject {
         postsListener?.remove()
         chatsListener?.remove()
         myPostsListener?.remove()
+        // F-23: clear the shared location tracker so a finished walk's GPS trace
+        // does not linger in memory after sign-out / account switch.
+        LocationTracker.shared.resetTracking()
     }
     
     // MARK: - Core Profile & Booting
@@ -185,15 +196,15 @@ class AppState: ObservableObject {
             guard let self = self else { return }
             
             if let err = error {
-                print("Error loading my active posts: \(err.localizedDescription)")
+                dbg("Error loading my active posts: \(err.localizedDescription)")
                 return
             }
             
             guard let documents = snapshot?.documents else { 
-                print("No snapshot documents found for my active posts")
+                dbg("No snapshot documents found for my active posts")
                 return 
             }
-            print("myActivePosts listener fetched \(documents.count) posts.")
+            dbg("myActivePosts listener fetched \(documents.count) posts.")
             self.myActivePosts = documents.compactMap { try? $0.data(as: Post.self) }
         }
     }
@@ -281,7 +292,7 @@ class AppState: ObservableObject {
                 "lastMessage": text,
                 "lastMessageTime": FieldValue.serverTimestamp()
             ])
-        } catch { print("Error sending message: \(error)") }
+        } catch { dbg("Error sending message: \(error)") }
     }
 
     func sendPhotoMessage(chatId: String, image: UIImage) async {
@@ -297,7 +308,7 @@ class AppState: ObservableObject {
                 "lastMessage": "📷 תמונה",
                 "lastMessageTime": FieldValue.serverTimestamp()
             ])
-        } catch { print("Error sending photo: \(error)") }
+        } catch { dbg("Error sending photo: \(error)") }
     }
     
     func sendWalkMessage(chatId: String) async {
@@ -310,23 +321,37 @@ class AppState: ObservableObject {
                 "lastMessage": text,
                 "lastMessageTime": FieldValue.serverTimestamp()
             ])
-        } catch { print("Error sending walk message: \(error)") }
+        } catch { dbg("Error sending walk message: \(error)") }
     }
 
     func approveChat(chatId: String, postId: String) async {
+        // Only the post owner approves; derive identity from the authenticated user.
+        guard let owner = currentUser, let ownerUid = owner.id else { return }
         do {
+            // Resolve the sitter from the chat document rather than a fragile chatId
+            // string-split (the old `approvedSitterId` parse was spoofable).
+            let chat = try? await db.collection("chats").document(chatId).getDocument(as: Chat.self)
+            let sitterId = chat?.sitterId ?? ""
+
             try await db.collection("chats").document(chatId).updateData(["approved": true])
-            try await db.collection("posts").document(postId).updateData(["status": "approved", "approvedSitterId": chatId.components(separatedBy: "_").last ?? ""])
-            
-            let sysMsg = ChatMessage(senderId: "system", senderName: "System", text: "התשלום עבר בהצלחה ✓", type: "payment")
+            try await db.collection("posts").document(postId).updateData([
+                "status": "approved",
+                "approvedSitterId": sitterId
+            ])
+
+            // The "payment passed" banner is authored by the owner (the Firestore
+            // rules only allow the post owner to write a `payment` message — a sitter
+            // can no longer forge it). It renders centered regardless of sender, so
+            // the chat looks identical to before.
+            let sysMsg = ChatMessage(senderId: ownerUid, senderName: owner.name, text: "התשלום עבר בהצלחה ✓", type: "payment")
             let _ = try db.collection("chats").document(chatId).collection("messages").addDocument(from: sysMsg)
-        } catch { print("Error approving chat: \(error)") }
+        } catch { dbg("Error approving chat: \(error)") }
     }
 
     func archiveChat(chatId: String) async {
         do {
             try await db.collection("chats").document(chatId).updateData(["archived": true])
-        } catch { print("Error archiving chat: \(error)") }
+        } catch { dbg("Error archiving chat: \(error)") }
     }
     
     // MARK: - Pets Write Operations
@@ -363,7 +388,7 @@ class AppState: ObservableObject {
                 let chunkPets = snap.documents.compactMap { try? $0.data(as: Pet.self) }
                 fetched.append(contentsOf: chunkPets)
             } catch {
-                print("Error fetching pets chunk: \(error)")
+                dbg("Error fetching pets chunk: \(error)")
             }
         }
         return fetched
@@ -419,7 +444,7 @@ class AppState: ObservableObject {
                     city = locality
                 }
             } catch {
-                print("Geocoding failed for city extraction: \(error)")
+                dbg("Geocoding failed for city extraction: \(error)")
             }
         }
         
@@ -497,7 +522,7 @@ class AppState: ObservableObject {
             ])
             return walkId
         } catch {
-            print("Error starting walk: \(error)")
+            dbg("Error starting walk: \(error)")
             return nil
         }
     }
@@ -513,7 +538,7 @@ class AppState: ObservableObject {
                 "duration": duration
             ])
         } catch {
-            print("Error updating walk coordinates: \(error)")
+            dbg("Error updating walk coordinates: \(error)")
         }
     }
     
@@ -527,15 +552,13 @@ class AppState: ObservableObject {
                 "distance": finalDistance,
                 "duration": finalDuration
             ])
-            
-            try await db.collection("chats").document(chatId).collection("messages").document(messageId).updateData([
-                "status": "completed",
-                "endTime": endTime,
-                "distance": finalDistance,
-                "duration": finalDuration
-            ])
+
+            // The walk bubble reads live from the walk document (liveWalk overrides
+            // msg.*), so the previous duplicate write to the chat message is dropped.
+            // Messages are immutable under the new rules; display is unaffected.
+            _ = messageId
         } catch {
-            print("Error stopping walk: \(error)")
+            dbg("Error stopping walk: \(error)")
         }
     }
     
@@ -545,16 +568,24 @@ class AppState: ObservableObject {
                 "photoURLs": FieldValue.arrayUnion([imageURL])
             ])
         } catch {
-            print("Error adding walk photo: \(error)")
+            dbg("Error adding walk photo: \(error)")
         }
     }
     
     func getTotalWalkHoursForChat(chatId: String) async -> String {
         do {
-            let snap = try await db.collection("walks")
+            var query: Query = db.collection("walks")
                 .whereField("chatId", isEqualTo: chatId)
                 .whereField("status", isEqualTo: "completed")
-                .getDocuments()
+            // Scope to the caller's own id so the participant-only walk read rule can
+            // authorize this list query (Firestore proves list safety from the query
+            // filters, not the returned docs).
+            if let uid = currentUser?.id {
+                query = currentUserRole == .owner
+                    ? query.whereField("ownerId", isEqualTo: uid)
+                    : query.whereField("sitterId", isEqualTo: uid)
+            }
+            let snap = try await query.getDocuments()
             
             let totalMinutes = snap.documents.compactMap { doc -> Double? in
                 return doc.data()["duration"] as? Double
@@ -564,7 +595,7 @@ class AppState: ObservableObject {
             let minutes = Int(totalMinutes) % 60
             return String(format: "%02d:%02d", hours, minutes)
         } catch {
-            print("Error fetching walk hours: \(error)")
+            dbg("Error fetching walk hours: \(error)")
             return "00:00"
         }
     }

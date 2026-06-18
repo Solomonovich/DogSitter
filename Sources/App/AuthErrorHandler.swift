@@ -1,27 +1,19 @@
 import Foundation
 import FirebaseAuth
+import SecurityKit
 
 struct AuthErrorHandler {
+    // F-19 / F-20: map auth errors to safe, user-facing messages.
+    //  - userNotFound and wrongPassword collapse into one message so an attacker
+    //    cannot tell whether an email is registered (account enumeration).
+    //  - unknown errors return a generic message and never leak the backend's
+    //    raw `localizedDescription`.
     static func handle(error: Error) -> String {
-        let nsError = error as NSError
-        
-        switch nsError.code {
-        case AuthErrorCode.invalidEmail.rawValue:
-            return "כתובת האימייל אינה תקינה."
-        case AuthErrorCode.wrongPassword.rawValue:
-            return "הסיסמה שהזנת שגויה."
-        case AuthErrorCode.userNotFound.rawValue:
-            return "לא נמצא משתמש עם אימייל זה."
-        case AuthErrorCode.userDisabled.rawValue:
+        let code = (error as NSError).code
+        // Keep the dedicated "account disabled" message; delegate the rest.
+        if code == AuthErrorCode.userDisabled.rawValue {
             return "חשבון זה הושבת."
-        case AuthErrorCode.emailAlreadyInUse.rawValue:
-            return "האימייל הזה כבר נמצא בשימוש המערכת."
-        case AuthErrorCode.weakPassword.rawValue:
-            return "הסיסמה חלשה מדי. אנא בחר סיסמה של 6 תווים ומעלה."
-        case AuthErrorCode.networkError.rawValue:
-            return "אין חיבור לאינטרנט. אנא בדוק את החיבור שלך ונסה שוב."
-        default:
-            return "אירעה שגיאה: \(error.localizedDescription)"
         }
+        return AuthErrorMapper.userFacing(code: code)
     }
 }
