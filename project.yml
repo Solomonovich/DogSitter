@@ -11,6 +11,8 @@ packages:
   lottie-spm:
     url: https://github.com/airbnb/lottie-spm.git
     majorVersion: 4.0.0
+  SecurityKit:
+    path: SecurityKit
 targets:
   DogSitter:
     type: application
@@ -32,6 +34,8 @@ targets:
         product: GoogleSignInSwift
       - package: lottie-spm
         product: Lottie
+      - package: SecurityKit
+        product: SecurityKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.shaqed.dogsitter

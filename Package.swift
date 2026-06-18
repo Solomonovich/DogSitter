@@ -16,7 +16,8 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/firebase/firebase-ios-sdk", "12.12.0"..<"13.0.0"),
         .package(url: "https://github.com/google/GoogleSignIn-iOS", "7.0.0"..<"8.0.0"),
-        .package(url: "https://github.com/airbnb/lottie-spm.git", "4.0.0"..<"5.0.0")
+        .package(url: "https://github.com/airbnb/lottie-spm.git", "4.0.0"..<"5.0.0"),
+        .package(path: "SecurityKit")
     ],
     targets: [
         .target(
@@ -27,7 +28,8 @@ let package = Package(
                 .product(name: "FirebaseFirestore", package: "firebase-ios-sdk"),
                 .product(name: "GoogleSignIn", package: "GoogleSignIn-iOS"),
                 .product(name: "GoogleSignInSwift", package: "GoogleSignIn-iOS"),
-                .product(name: "Lottie", package: "lottie-spm")
+                .product(name: "Lottie", package: "lottie-spm"),
+                .product(name: "SecurityKit", package: "SecurityKit")
             ],
             path: "Sources",
             resources: [
