@@ -9,6 +9,9 @@ xcuserdata/
 .build/
 .swiftpm/
 
+# Cloud Functions build output
+functions/lib/
+
 # Node — ignore deps everywhere and the stray ROOT-level npm files only.
 # Subdirectory tooling (firestore-tests/, functions/) keeps its own package.json tracked.
 node_modules/
