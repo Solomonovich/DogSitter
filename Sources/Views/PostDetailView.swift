@@ -181,6 +181,8 @@ struct PostDetailView: View {
                 .alert("נשלח לבעל הכלב!", isPresented: $showConfirm) {
                     Button("אישור") {
                         Task {
+                            // F-18: require a verified email to express interest.
+                            guard appState.requireVerifiedEmail() else { return }
                             isSubmitting = true
                             do {
                                 try await appState.expressInterest(in: post)

@@ -132,6 +132,8 @@ struct PreWalkView: View {
             }
             
             Task {
+                // F-18: require a verified email to start a walk.
+                guard appState.requireVerifiedEmail() else { return }
                 if let chatId = chat.id {
                     let _ = await appState.startWalk(chatId: chatId, postId: chat.postId, startAddress: addressString)
                     

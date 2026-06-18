@@ -116,7 +116,11 @@ struct SignUpView: View {
             }
             
             guard let uid = result?.user.uid else { return }
-            
+
+            // F-18: send a verification email so the user can verify before the
+            // gated actions (post / express interest / start walk).
+            result?.user.sendEmailVerification(completion: nil)
+
             // Generate clean username prefixing from email
             let username = "@" + (email.split(separator: "@").first.map(String.init) ?? "user")
             

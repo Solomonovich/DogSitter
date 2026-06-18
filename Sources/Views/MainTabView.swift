@@ -9,6 +9,7 @@ struct MainTabView: View {
     @State private var ownerTab: Int = 3 // Owner defaults to messages
     
     var body: some View {
+        Group {
         if appState.currentUserRole == .sitter {
             TabView(selection: $sitterTab) {
                 BrowsePostsView()
@@ -58,5 +59,15 @@ struct MainTabView: View {
             }
             .tint(theme.color.accent)
         }
+        }
+        // F-18: one central prompt for the email-verification gate; the action
+        // buttons stay visually unchanged and only trigger this when unverified.
+        .alert("אימות אימייל נדרש", isPresented: $appState.showEmailVerificationPrompt) {
+            Button("שלח קישור אימות") { Task { await appState.resendVerificationEmail() } }
+            Button("סגור", role: .cancel) {}
+        } message: {
+            Text("כדי לבצע פעולה זו יש לאמת את כתובת האימייל שלך. נשלח אליך קישור אימות.")
+        }
+        .task { await appState.refreshEmailVerification() }
     }
 }
