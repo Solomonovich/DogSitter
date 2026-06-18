@@ -27,3 +27,14 @@ jobs:
         run: npm ci
       - name: Run Firestore rules unit tests (emulator)
         run: npm run test:ci
+
+  swift-helpers:
+    name: SecurityKit unit tests
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: SecurityKit
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run SecurityKit unit tests
+        run: swift test
