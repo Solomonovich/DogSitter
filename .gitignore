@@ -9,10 +9,11 @@ xcuserdata/
 .build/
 .swiftpm/
 
-# Node (not part of the iOS app)
+# Node — ignore deps everywhere and the stray ROOT-level npm files only.
+# Subdirectory tooling (firestore-tests/, functions/) keeps its own package.json tracked.
 node_modules/
-package-lock.json
-package.json
+/package.json
+/package-lock.json
 
 # Generated
 SECURITY_AUDIT.md
