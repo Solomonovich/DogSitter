@@ -4,12 +4,13 @@ import MapKit
 
 struct ChatsListView: View {
     @EnvironmentObject var appState: AppState
-    
+    @Environment(\.theme) private var theme
+
     var body: some View {
         NavigationView {
             ZStack {
-                Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all)
-                
+                theme.color.background.edgesIgnoringSafeArea(.all)
+
                 if appState.currentUserRole == .owner {
                     OwnerChatListView()
                 } else {
@@ -29,12 +30,11 @@ struct OwnerChatListView: View {
     
     var body: some View {
         if appState.ownerChatGroups.isEmpty {
-            VStack {
-                Spacer()
-                Text("אין צ'אטים עדיין. פרסם פוסט כדי להתחיל!")
-                    .foregroundColor(.secondary)
-                Spacer()
-            }
+            EmptyStateView(
+                icon: "bubble.left.and.bubble.right",
+                title: "אין צ'אטים עדיין",
+                message: "פרסם פוסט כדי להתחיל לקבל פניות ממטפלים"
+            )
         } else {
             ScrollView {
                 LazyVStack(spacing: 12) {
@@ -50,9 +50,10 @@ struct OwnerChatListView: View {
 
 struct OwnerChatGroupView: View {
     @EnvironmentObject var appState: AppState
+    @Environment(\.theme) private var theme
     let group: OwnerChatGroup
     @State private var isExpanded: Bool = false
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -65,37 +66,37 @@ struct OwnerChatGroupView: View {
             }) {
                 HStack {
                     if group.isApproved {
-                        Image(systemName: "chevron.down").foregroundColor(.clear) // Spacer
+                        Image(systemName: "chevron.down").foregroundStyle(.clear) // Spacer
                     } else {
                         Image(systemName: isExpanded ? "chevron.down" : "chevron.left")
-                            .foregroundColor(.gray)
+                            .foregroundStyle(theme.color.textSecondary)
                     }
-                    
+
                     Spacer()
-                    
+
                     VStack(alignment: .trailing) {
                         HStack {
                             Text(group.pets.map { $0.name }.joined(separator: ", "))
-                                .font(.headline)
-                                .foregroundColor(group.isActive ? Color(white: 0.1) : .gray)
-                            
+                                .font(theme.typography.headline)
+                                .foregroundStyle(group.isActive ? theme.color.textPrimary : theme.color.textSecondary)
+
                             Circle()
-                                .fill(group.isActive ? Color.green : Color.gray)
+                                .fill(group.isActive ? theme.color.success : theme.color.textSecondary)
                                 .frame(width: 8, height: 8)
                         }
                         if let post = group.post {
                             Text("\(post.startDate.dateValue().formatted(date: .numeric, time: .omitted)) - \(post.endDate.dateValue().formatted(date: .numeric, time: .omitted))")
                                 .font(.system(size: 12))
-                                .foregroundColor(.gray)
+                                .foregroundStyle(theme.color.textSecondary)
                         }
                     }
                 }
                 .padding(.horizontal)
                 .frame(height: 44)
-                .background(group.isActive ? Color.green.opacity(0.1) : Color(.secondarySystemGroupedBackground))
+                .background(group.isActive ? theme.color.success.opacity(0.12) : theme.color.surfaceSecondary)
             }
             .buttonStyle(PlainButtonStyle())
-            
+
             if isExpanded || group.isApproved {
                 ForEach(group.chats) { wrapper in
                     NavigationLink(destination: ChatDetailView(chatWrapper: wrapper)) {
@@ -108,13 +109,13 @@ struct OwnerChatGroupView: View {
                                 Task { await appState.archiveChat(chatId: id) }
                             }
                         }
-                        .tint(.red)
+                        .tint(theme.color.error)
                     }
                 }
             }
         }
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
+        .background(theme.color.surface)
+        .clipShape(RoundedRectangle(cornerRadius: theme.radius.md, style: .continuous))
         .padding(.horizontal)
         .onAppear {
             if group.isApproved {
@@ -126,60 +127,57 @@ struct OwnerChatGroupView: View {
 
 struct OwnerChatRowView: View {
     @EnvironmentObject var appState: AppState
+    @Environment(\.theme) private var theme
     let wrapper: ChatWrapper
     let isApproved: Bool
     @State private var showingApproveAlert = false
-    
+
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading) {
                 if let t = wrapper.chat.lastMessageTime?.dateValue() {
                     Text(t.formatted(date: .omitted, time: .shortened))
                         .font(.system(size: 12))
-                        .foregroundColor(.gray)
+                        .foregroundStyle(theme.color.textSecondary)
                 }
-                
+
                 if isApproved {
                     Image(systemName: "checkmark")
-                        .foregroundColor(.green)
+                        .foregroundStyle(theme.color.success)
                 } else {
                     Button(action: { showingApproveAlert = true }) {
                         Text("אשר")
                             .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.white)
+                            .foregroundStyle(theme.color.textOnAccent)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 6)
-                            .background(Color.blue)
+                            .background(theme.color.accent)
                             .clipShape(Capsule())
                     }
                 }
             }
-            
+
             Spacer()
-            
+
             VStack(alignment: .trailing, spacing: 4) {
                 Text(wrapper.chat.sitterName)
                     .font(.system(size: 16, weight: .bold))
-                
+
                 Text(wrapper.chat.lastMessage ?? "...")
                     .font(.system(size: 14))
-                    .foregroundColor(.gray)
+                    .foregroundStyle(theme.color.textSecondary)
                     .lineLimit(1)
             }
-            
-            AsyncImage(url: URL(string: wrapper.chat.sitterPhotoURL ?? "")) { phase in
-                if let image = phase.image {
-                    image.resizable().aspectRatio(contentMode: .fill)
-                } else {
-                    Image(systemName: "person.circle.fill").resizable().foregroundColor(.gray)
-                }
+
+            CachedAsyncImage(wrapper.chat.sitterPhotoURL, contentMode: .fill, targetSize: 88) {
+                Image(systemName: "person.circle.fill").resizable().foregroundStyle(theme.color.textSecondary)
             }
             .frame(width: 44, height: 44)
             .clipShape(Circle())
         }
         .padding()
         .frame(height: 72)
-        .background(isApproved ? Color.yellow.opacity(0.2) : Color(.systemBackground))
+        .background(isApproved ? theme.color.accent.opacity(0.12) : theme.color.surface)
         .alert("אישור מטפל", isPresented: $showingApproveAlert) {
             Button("ביטול", role: .cancel) { }
             Button("אשר") {
@@ -196,15 +194,14 @@ struct OwnerChatRowView: View {
 // MARK: - Sitter Chat Views
 struct SitterChatListView: View {
     @EnvironmentObject var appState: AppState
-    
+
     var body: some View {
         if appState.sitterChats.isEmpty {
-            VStack {
-                Spacer()
-                Text("אין צ'אטים עדיין. חפש פוסטים והתחל!")
-                    .foregroundColor(.secondary)
-                Spacer()
-            }
+            EmptyStateView(
+                icon: "bubble.left.and.bubble.right",
+                title: "אין צ'אטים עדיין",
+                message: "חפש פוסטים והבע עניין כדי להתחיל שיחה"
+            )
         } else {
             List {
                 ForEach(appState.sitterChats) { wrapper in
@@ -221,72 +218,70 @@ struct SitterChatListView: View {
 }
 
 struct SitterChatRowView: View {
+    @Environment(\.theme) private var theme
     let wrapper: ChatWrapper
-    
+
     var isActive: Bool {
         wrapper.post?.status == "open" || wrapper.chat.approved
     }
-    
+
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading) {
                 if let t = wrapper.chat.lastMessageTime?.dateValue() {
                     Text(t.formatted(date: .omitted, time: .shortened))
                         .font(.system(size: 12))
-                        .foregroundColor(.gray)
+                        .foregroundStyle(theme.color.textSecondary)
                 }
-                
+
                 HStack(spacing: 4) {
                     if wrapper.chat.approved {
                         Text("✓ אושרת")
                             .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.green)
+                            .foregroundStyle(theme.color.success)
                     }
                     Circle()
-                        .fill(isActive ? Color.green : Color.gray)
+                        .fill(isActive ? theme.color.success : theme.color.textSecondary)
                         .frame(width: 8, height: 8)
                 }
             }
-            
+
             Spacer()
-            
+
             VStack(alignment: .trailing, spacing: 4) {
                 Text(wrapper.chat.ownerName)
                     .font(.system(size: 16, weight: .bold))
-                
+
                 Text(wrapper.pets.map { $0.name }.joined(separator: ", "))
                     .font(.system(size: 12))
-                    .foregroundColor(.blue)
-                
+                    .foregroundStyle(theme.color.accent)
+
                 Text(wrapper.chat.lastMessage ?? "...")
                     .font(.system(size: 14))
-                    .foregroundColor(.gray)
+                    .foregroundStyle(theme.color.textSecondary)
                     .lineLimit(1)
             }
-            
-            AsyncImage(url: URL(string: wrapper.chat.ownerPhotoURL ?? "")) { phase in
-                if let image = phase.image {
-                    image.resizable().aspectRatio(contentMode: .fill)
-                } else {
-                    Image(systemName: "person.circle.fill").resizable().foregroundColor(.gray)
-                }
+
+            CachedAsyncImage(wrapper.chat.ownerPhotoURL, contentMode: .fill, targetSize: 88) {
+                Image(systemName: "person.circle.fill").resizable().foregroundStyle(theme.color.textSecondary)
             }
             .frame(width: 44, height: 44)
             .clipShape(Circle())
         }
         .padding()
         .frame(height: 72)
-        .background(wrapper.chat.approved ? Color.yellow.opacity(0.2) : Color(.systemBackground))
+        .background(wrapper.chat.approved ? theme.color.accent.opacity(0.12) : theme.color.surface)
     }
 }
 
 // MARK: - Chat Detail
 struct ChatDetailView: View {
     @EnvironmentObject var appState: AppState
+    @Environment(\.theme) private var theme
     let chatWrapper: ChatWrapper
-    
+
     @Environment(\.presentationMode) var presentationMode
-    
+
     @State private var inputText = ""
     @State private var messages: [ChatMessage] = []
     @State private var listener: ListenerRegistration?
@@ -334,8 +329,8 @@ struct ChatDetailView: View {
     
     var body: some View {
         ZStack {
-            Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all)
-            
+            theme.color.background.edgesIgnoringSafeArea(.all)
+
             VStack(spacing: 0) {
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -407,11 +402,11 @@ struct ChatDetailView: View {
                                     .padding(.horizontal)
                                 Text("מעלה תמונה...")
                                     .font(.caption)
-                                    .foregroundColor(.gray)
+                                    .foregroundStyle(theme.color.textSecondary)
                             }
                             .padding(.top, 8)
                         }
-                        
+
                         HStack(alignment: .bottom, spacing: 12) {
                             // Send Button
                             Button(action: {
@@ -425,22 +420,23 @@ struct ChatDetailView: View {
                             }) {
                                 Image(systemName: "arrow.up")
                                     .font(.system(size: 18, weight: .bold))
-                                    .foregroundColor(.white)
+                                    .foregroundStyle(theme.color.textOnAccent)
                                     .frame(width: 36, height: 36)
-                                    .background(inputText.isEmpty ? Color.gray : Color.blue)
+                                    .background(inputText.isEmpty ? theme.color.textSecondary.opacity(0.5) : theme.color.accent)
                                     .clipShape(Circle())
                             }
                             .disabled(inputText.isEmpty)
-                            
+                            .accessibilityLabel("שלח")
+
                             // Text Field
                             TextField("הודעה...", text: $inputText, axis: .vertical)
                                 .lineLimit(1...5)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
-                                .background(Color(.secondarySystemGroupedBackground))
-                                .cornerRadius(20)
+                                .background(theme.color.surfaceSecondary)
+                                .clipShape(RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
                                 .multilineTextAlignment(.trailing)
-                            
+
                             // Plus Button
                             Button(action: {
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -449,16 +445,17 @@ struct ChatDetailView: View {
                             }) {
                                 Image(systemName: "plus")
                                     .font(.system(size: 18, weight: .bold))
-                                    .foregroundColor(.blue)
+                                    .foregroundStyle(theme.color.accent)
                                     .frame(width: 32, height: 32)
-                                    .background(Color(.systemBackground))
+                                    .background(theme.color.surface)
                                     .clipShape(Circle())
-                                    .overlay(Circle().stroke(Color.blue, lineWidth: 1.5))
+                                    .overlay(Circle().stroke(theme.color.accent, lineWidth: 1.5))
                             }
+                            .accessibilityLabel("צרף")
                         }
                         .padding(.horizontal)
                         .padding(.vertical, 8)
-                        .background(Color(.systemBackground))
+                        .background(theme.color.surface)
                     }
                     .overlay(alignment: .bottomTrailing) {
                         if showAttachmentMenu {
@@ -470,33 +467,33 @@ struct ChatDetailView: View {
                                     }) {
                                         HStack {
                                             Text("הוסף הליכה")
-                                                .foregroundColor(Color(white: 0.1))
+                                                .foregroundStyle(theme.color.textPrimary)
                                             Image(systemName: "pawprint.fill")
-                                                .foregroundColor(Color(white: 0.1))
+                                                .foregroundStyle(theme.color.accent)
                                         }
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 10)
-                                        .background(Color(.systemBackground))
-                                        .cornerRadius(20)
+                                        .background(theme.color.surface)
+                                        .clipShape(RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
                                         .shadow(color: .black.opacity(0.1), radius: 5, y: 2)
                                     }
                                     .transition(.move(edge: .bottom).combined(with: .opacity))
                                 }
-                            
+
                             Button(action: {
                                 showAttachmentMenu = false
                                 showingSourceDialog = true
                             }) {
                                 HStack {
                                     Text("הוסף תמונה")
-                                        .foregroundColor(Color(white: 0.1))
+                                        .foregroundStyle(theme.color.textPrimary)
                                     Image(systemName: "photo")
-                                        .foregroundColor(Color(white: 0.1))
+                                        .foregroundStyle(theme.color.accent)
                                 }
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 10)
-                                .background(Color(.systemBackground))
-                                .cornerRadius(20)
+                                .background(theme.color.surface)
+                                .clipShape(RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
                                 .shadow(color: .black.opacity(0.1), radius: 5, y: 2)
                             }
                             .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -507,22 +504,17 @@ struct ChatDetailView: View {
                     }
                     }
             
-            if let urlString = selectedLightboxURL,
-               let url = URL(string: urlString) {
+            if let urlString = selectedLightboxURL {
                 ZStack {
                     Color.black.opacity(0.85)
                         .ignoresSafeArea()
                         .onTapGesture { selectedLightboxURL = nil }
-                    
-                    AsyncImage(url: url) { phase in
-                        if let image = phase.image {
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .padding()
-                        }
+
+                    CachedAsyncImage(urlString, contentMode: .fit, targetSize: 1000) {
+                        LottieProgressView(size: 40)
                     }
-                    
+                    .padding()
+
                     VStack {
                         HStack {
                             Button(action: { selectedLightboxURL = nil }) {
@@ -554,7 +546,6 @@ struct ChatDetailView: View {
             Button("ביטול", role: .cancel) {}
         }
         .sheet(item: $activeSheet) { sheet in
-            let _ = print("DEBUG: sheet opening with \(sheet.id)")
             switch sheet {
             case .userProfile:
                 ChatUserProfileView(
@@ -611,7 +602,7 @@ struct ChatDetailView: View {
                 Button(action: { presentationMode.wrappedValue.dismiss() }) {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 17, weight: .semibold))
-                        .foregroundColor(.blue)
+                        .foregroundStyle(theme.color.accent)
                 }
                 .environment(\.layoutDirection, .leftToRight)
             }
@@ -619,12 +610,11 @@ struct ChatDetailView: View {
                 Button(action: {
                     activeSheet = .userProfile
                 }) {
-                    AsyncImage(url: URL(string: appState.currentUserRole == .owner ? (chatWrapper.chat.sitterPhotoURL ?? "") : (chatWrapper.chat.ownerPhotoURL ?? ""))) { phase in
-                        if let img = phase.image {
-                            img.resizable().aspectRatio(contentMode: .fill)
-                        } else {
-                            Image(systemName: "person.circle.fill").resizable().foregroundColor(.gray)
-                        }
+                    CachedAsyncImage(
+                        appState.currentUserRole == .owner ? chatWrapper.chat.sitterPhotoURL : chatWrapper.chat.ownerPhotoURL,
+                        contentMode: .fill, targetSize: 72
+                    ) {
+                        Image(systemName: "person.circle.fill").resizable().foregroundStyle(theme.color.textSecondary)
                     }
                     .frame(width: 36, height: 36)
                     .clipShape(Circle())
@@ -720,24 +710,25 @@ struct ChatDetailView: View {
 
 // MARK: - Bubble Views
 struct ChatBubbleView: View {
+    @Environment(\.theme) private var theme
     let msg: ChatMessage
     let currentUserId: String?
     @Binding var selectedLightboxURL: String?
     var onTapWalk: ((String) -> Void)? = nil
-    
+
     var isMine: Bool {
         msg.senderId == currentUserId
     }
-    
+
     var body: some View {
         if msg.type == "payment" {
             Text(msg.text)
                 .font(.system(size: 14, weight: .bold))
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
-                .background(Color.green.opacity(0.2))
-                .foregroundColor(.green)
-                .cornerRadius(16)
+                .background(theme.color.success.opacity(0.18))
+                .foregroundStyle(theme.color.success)
+                .clipShape(RoundedRectangle(cornerRadius: theme.radius.card, style: .continuous))
                 .frame(maxWidth: .infinity, alignment: .center)
         } else if msg.type == "walk" {
             WalkBubbleContent(msg: msg, isMine: isMine, onTap: {
@@ -745,55 +736,40 @@ struct ChatBubbleView: View {
                     onTapWalk?(wid)
                 }
             })
-        } else if msg.type == "photo", let photoURL = msg.photoURL, let url = URL(string: photoURL) {
+        } else if msg.type == "photo", let photoURL = msg.photoURL {
             HStack {
                 if isMine { Spacer() }
-                
-                AsyncImage(url: url) { phase in
-                    if let image = phase.image {
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 200, height: 200)
-                            .clipped()
-                            .cornerRadius(16)
-                    } else if phase.error != nil {
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color.gray.opacity(0.3))
-                            .frame(width: 200, height: 200)
-                            .overlay(
-                                Image(systemName: "photo")
-                                    .foregroundColor(.gray)
-                            )
-                    } else {
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color.gray.opacity(0.2))
-                            .frame(width: 200, height: 200)
-                            .overlay(LottieProgressView(size: 40))
-                    }
+
+                CachedAsyncImage(photoURL, contentMode: .fill, targetSize: 400) {
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(theme.color.surfaceSecondary)
+                        .overlay(LottieProgressView(size: 40))
                 }
+                .frame(width: 200, height: 200)
+                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .onTapGesture {
                     selectedLightboxURL = photoURL
                 }
-                
+
                 if !isMine { Spacer() }
             }
         } else {
             // Text Message
             HStack(alignment: .bottom) {
                 if isMine { Spacer() }
-                
+
                 VStack(alignment: isMine ? .trailing : .leading, spacing: 4) {
                     Text(msg.text)
                         .padding(12)
-                        .background(isMine ? Color.blue : Color(.secondarySystemGroupedBackground))
-                        .foregroundColor(isMine ? .white : Color(white: 0.1))
+                        .background(isMine ? theme.color.accent : theme.color.surfaceSecondary)
+                        .foregroundStyle(isMine ? theme.color.textOnAccent : theme.color.textPrimary)
                         .clipShape(RoundedCorner(radius: 16, corners: isMine ? [.topLeft, .topRight, .bottomLeft] : [.topLeft, .topRight, .bottomRight]))
-                    
+
                     if let d = msg.createdAt?.dateValue() {
                         Text(d.formatted(date: .omitted, time: .shortened))
                             .font(.system(size: 10))
-                            .foregroundColor(.gray)
+                            .foregroundStyle(theme.color.textSecondary)
                     }
                 }
                 if !isMine { Spacer() }
@@ -805,6 +781,7 @@ struct ChatBubbleView: View {
 // MARK: - Chat User Profile View
 struct ChatUserProfileView: View {
     @EnvironmentObject var appState: AppState
+    @Environment(\.theme) private var theme
     let otherUserId: String
     let chatId: String
     let isApproved: Bool
@@ -825,42 +802,34 @@ struct ChatUserProfileView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all)
-                
+                theme.color.background.edgesIgnoringSafeArea(.all)
+
                 if isLoading {
                     LottieProgressView(size: 80)
                 } else if let user = user {
                     ScrollView {
                         VStack(spacing: 20) {
-                            Text("View is rendering")
-                                .foregroundColor(.red)
-                                .font(.headline)
-                            
                             // Header Section
                         VStack(spacing: 8) {
-                            AsyncImage(url: URL(string: user.photoURL ?? "")) { phase in
-                                if let img = phase.image {
-                                    img.resizable().aspectRatio(contentMode: .fill)
-                                } else {
-                                    Image(systemName: "person.circle.fill").resizable().foregroundColor(.gray)
-                                }
+                            CachedAsyncImage(user.photoURL, contentMode: .fill, targetSize: 200) {
+                                Image(systemName: "person.circle.fill").resizable().foregroundStyle(theme.color.textSecondary)
                             }
                             .frame(width: 100, height: 100)
                             .clipShape(Circle())
-                            
+
                             Text(user.name)
                                 .font(.system(size: 22, weight: .bold))
-                                .foregroundColor(Color(white: 0.1))
+                                .foregroundStyle(theme.color.textPrimary)
                             
                             if isApproved {
                                 if let address = user.address, !address.isEmpty {
                                     Text(address)
                                         .font(.system(size: 15))
-                                        .foregroundColor(Color(white: 0.4))
+                                        .foregroundStyle(theme.color.textSecondary)
                                         .multilineTextAlignment(.center)
                                         .padding(.horizontal)
                                 }
-                                
+
                                 if let phone = user.phone, !phone.isEmpty {
                                     Button(action: {
                                         if let url = URL(string: "tel://\(phone)") {
@@ -873,17 +842,17 @@ struct ChatUserProfileView: View {
                                             Text(phone)
                                                 .font(.system(size: 15))
                                         }
-                                        .foregroundColor(Color(red: 74/255, green: 144/255, blue: 217/255))
+                                        .foregroundStyle(theme.color.accent)
                                     }
                                 }
                             } else {
                                 Text("פרטי יצירת קשר יוצגו לאחר אישור הבקינג")
                                     .font(.system(size: 14))
-                                    .foregroundColor(.gray)
+                                    .foregroundStyle(theme.color.textSecondary)
                                     .multilineTextAlignment(.center)
                                     .padding(16)
-                                    .background(Color(.secondarySystemGroupedBackground))
-                                    .cornerRadius(12)
+                                    .background(theme.color.surfaceSecondary)
+                                    .clipShape(RoundedRectangle(cornerRadius: theme.radius.md, style: .continuous))
                                     .padding(.horizontal)
                             }
                         }
@@ -894,15 +863,15 @@ struct ChatUserProfileView: View {
                         // Shared Photos Section
                         VStack(alignment: .trailing, spacing: 12) {
                             Text("תמונות משותפות")
-                                .font(.headline.bold())
-                                .foregroundColor(Color(white: 0.1))
+                                .font(theme.typography.headline)
+                                .foregroundStyle(theme.color.textPrimary)
                                 .frame(maxWidth: .infinity, alignment: .trailing)
                                 .padding(.horizontal)
-                            
+
                             if photos.isEmpty && !isLoadingMore {
                                 Text("אין תמונות משותפות עדיין")
                                     .font(.system(size: 15))
-                                    .foregroundColor(Color(white: 0.5))
+                                    .foregroundStyle(theme.color.textSecondary)
                                     .frame(maxWidth: .infinity, alignment: .center)
                                     .padding(.vertical, 20)
                             } else {
@@ -913,12 +882,8 @@ struct ChatUserProfileView: View {
                                                 selectedPhotoURL = url
                                                 withAnimation { showingLightbox = true }
                                             }) {
-                                                AsyncImage(url: URL(string: url)) { phase in
-                                                    if let img = phase.image {
-                                                        img.resizable().aspectRatio(contentMode: .fill)
-                                                    } else {
-                                                        LottieProgressView(size: 40)
-                                                    }
+                                                CachedAsyncImage(url, contentMode: .fill, targetSize: 240) {
+                                                    theme.color.surfaceSecondary.overlay(LottieProgressView(size: 40))
                                                 }
                                                 .frame(maxWidth: .infinity)
                                                 .aspectRatio(1, contentMode: .fit)
@@ -935,7 +900,7 @@ struct ChatUserProfileView: View {
                                         } else {
                                             Text("טען עוד")
                                                 .font(.system(size: 15, weight: .medium))
-                                                .foregroundColor(.blue)
+                                                .foregroundStyle(theme.color.accent)
                                                 .padding(.vertical, 8)
                                         }
                                     }
@@ -965,10 +930,8 @@ struct ChatUserProfileView: View {
                                 Spacer()
                             }
                             Spacer()
-                            AsyncImage(url: URL(string: url)) { phase in
-                                if let img = phase.image {
-                                    img.resizable().aspectRatio(contentMode: .fit)
-                                }
+                            CachedAsyncImage(url, contentMode: .fit, targetSize: 1000) {
+                                LottieProgressView(size: 40)
                             }
                             Spacer()
                         }
@@ -1006,9 +969,9 @@ struct ChatUserProfileView: View {
                 }
             }
         }
-        .background(Color(.systemBackground))
+        .background(theme.color.surface)
     }
-    
+
     func loadInitialPhotos() {
         isLoadingMore = true
         appState.db.collection("chats")
@@ -1087,10 +1050,11 @@ struct ChatImagePicker: UIViewControllerRepresentable {
 
 // MARK: - Walk Bubble Content
 struct WalkBubbleContent: View {
+    @Environment(\.theme) private var theme
     let msg: ChatMessage
     let isMine: Bool
     var onTap: () -> Void
-    
+
     // Live update state
     @State private var liveWalk: Walk?
     @EnvironmentObject var appState: AppState
@@ -1127,11 +1091,11 @@ struct WalkBubbleContent: View {
                             .clipped()
                     } else {
                         Rectangle()
-                            .fill(Color(hex: "#E0E0E0"))
+                            .fill(theme.color.surfaceSecondary)
                             .frame(height: 150)
                             .overlay(LottieProgressView(size: 40))
                     }
-                    
+
                     HStack {
                         let totalDuration = liveWalk?.duration ?? msg.duration ?? 0.0
                         Text("זמן - \(formatElapsedTime(Int(totalDuration * 60)))")
@@ -1143,12 +1107,12 @@ struct WalkBubbleContent: View {
                             .font(.caption)
                     }
                     .padding()
-                    .background(Color(hex: "#9E9E9E").opacity(0.3))
+                    .background(theme.color.surfaceSecondary)
                 }
                 .frame(width: 280)
-                .background(Color(.systemBackground))
-                .cornerRadius(16)
-                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(hex: "#4A90D9"), lineWidth: 2))
+                .background(theme.color.surface)
+                .clipShape(RoundedRectangle(cornerRadius: theme.radius.card, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: theme.radius.card).stroke(theme.color.accent, lineWidth: 2))
                 .padding(.vertical, 4)
                 .onAppear {
                     if snapshotImage == nil {
@@ -1163,43 +1127,43 @@ struct WalkBubbleContent: View {
                 VStack(alignment: .trailing, spacing: 8) {
                     Text(formatElapsedTime(Int(activeDuration * 60)))
                         .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.white)
-                    
+                        .foregroundStyle(theme.color.textOnAccent)
+
                     Text("הותחל ב- \(startTime.formatted(date: .omitted, time: .shortened))")
                         .font(.caption)
-                        .foregroundColor(.white)
-                    
+                        .foregroundStyle(theme.color.textOnAccent)
+
                     Button(action: onTap) {
                         Text("סיים ההליכה")
-                            .foregroundColor(.red)
+                            .foregroundStyle(theme.color.error)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 8)
-                            .background(Color(.systemBackground))
-                            .cornerRadius(8)
+                            .background(theme.color.surface)
+                            .clipShape(RoundedRectangle(cornerRadius: theme.radius.xs, style: .continuous))
                     }
                 }
                 .padding()
                 .frame(width: 260)
-                .background(Color(hex: "#4A90D9"))
-                .cornerRadius(16)
+                .background(LinearGradient(colors: theme.color.accentGradient, startPoint: .topLeading, endPoint: .bottomTrailing))
+                .clipShape(RoundedRectangle(cornerRadius: theme.radius.card, style: .continuous))
             } else {
                 // SCREEN 3 — ACTIVE WALK CHAT BUBBLE (Owner)
                 VStack(spacing: 0) {
                     VStack(spacing: 4) {
                         Text(formatElapsedTime(Int(activeDuration * 60)))
                             .font(.system(size: 40, weight: .bold))
-                            .foregroundColor(Color(hex: "#4A90D9"))
-                        
+                            .foregroundStyle(theme.color.accent)
+
                         HStack {
                             Text(startAddress)
                                 .font(.system(size: 13))
-                                .foregroundColor(.gray)
+                                .foregroundStyle(theme.color.textSecondary)
                             Image(systemName: "mappin.and.ellipse")
-                                .foregroundColor(.gray)
+                                .foregroundStyle(theme.color.textSecondary)
                         }
                     }
                     .padding()
-                    
+
                     HStack {
                         Text("\(startTime.formatted(date: .omitted, time: .shortened)) -הותחל ב")
                             .font(.caption)
@@ -1210,11 +1174,11 @@ struct WalkBubbleContent: View {
                             .font(.caption)
                     }
                     .padding()
-                    .background(Color(hex: "#9E9E9E").opacity(0.3))
+                    .background(theme.color.surfaceSecondary)
                 }
                 .frame(width: 260)
-                .background(Color(hex: "#E3F2FD"))
-                .cornerRadius(16)
+                .background(theme.color.accent.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: theme.radius.card, style: .continuous))
             }
         }
         .buttonStyle(PlainButtonStyle())
@@ -1264,7 +1228,7 @@ struct WalkBubbleContent: View {
             
             if let context = UIGraphicsGetCurrentContext() {
                 context.setLineWidth(4.0)
-                context.setStrokeColor(UIColor(red: 74/255, green: 144/255, blue: 217/255, alpha: 1.0).cgColor)
+                context.setStrokeColor(UIColor(theme.color.accent).cgColor)
                 
                 let points = coords.map { snapshot.point(for: $0) }
                 if let first = points.first {

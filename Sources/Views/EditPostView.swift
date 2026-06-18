@@ -5,7 +5,8 @@ import FirebaseFirestore
 struct EditPostView: View {
     @EnvironmentObject var appState: AppState
     @Environment(\.presentationMode) var presentationMode
-    
+    @Environment(\.theme) private var theme
+
     let postToEdit: Post
     
     @State private var startDate = Date()
@@ -114,7 +115,7 @@ struct EditPostView: View {
                         HStack {
                             Text("כמות בארוחה (גרם):")
                             Spacer()
-                            TextField("גרם", text: $foodGrams).keyboardType(.numberPad).frame(width: 80)
+                            TextField("גרם", text: $foodGrams).keyboardType(.decimalPad).frame(width: 80)
                         }
                     }
                 }
@@ -158,52 +159,41 @@ struct EditPostView: View {
             
             if let err = errorMessage {
                 Text(err)
-                    .foregroundColor(.red)
+                    .foregroundStyle(theme.color.error)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
-            
+
             if let succ = successMessage {
                 Text(succ)
-                    .foregroundColor(.green)
+                    .foregroundStyle(theme.color.success)
                     .bold()
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
-            
+
             Section {
                 Button(action: saveChanges) {
                     if isPublishing {
                         LottieProgressView(size: 36)
-                            .frame(maxWidth: .infinity, alignment: .center)
                     } else {
                         Text("שמור שינויים")
-                            .bold()
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .foregroundColor(.white)
                     }
                 }
-                .padding()
-                .background(Color.blue)
-                .cornerRadius(10)
+                .buttonStyle(PrimaryButtonStyle())
                 .disabled(isPublishing || isDeleting)
-                
+
                 Button(action: { showDeleteAlert = true }) {
                     if isDeleting {
                         LottieProgressView(size: 36)
-                            .frame(maxWidth: .infinity, alignment: .center)
                     } else {
                         Text("מחק פוסט")
-                            .bold()
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .foregroundColor(.white)
                     }
                 }
-                .padding()
-                .background(Color.red)
-                .cornerRadius(10)
+                .buttonStyle(DestructiveButtonStyle())
                 .disabled(isPublishing || isDeleting)
             }
+            .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
         }
         .navigationTitle("ערוך פוסט")

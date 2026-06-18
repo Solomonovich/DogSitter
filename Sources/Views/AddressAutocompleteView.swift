@@ -47,17 +47,18 @@ class AddressSearchViewModel: NSObject, ObservableObject, MKLocalSearchCompleter
 }
 
 struct AddressAutocompleteField: View {
+    @Environment(\.theme) private var theme
     let placeholder: String
     @Binding var text: String
-    
+
     @StateObject private var viewModel = AddressSearchViewModel()
     @State private var showSuggestions = false
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Image(systemName: "mappin.and.ellipse")
-                    .foregroundColor(.gray)
+                    .foregroundStyle(theme.color.textSecondary)
                 TextField(placeholder, text: $viewModel.searchQuery, onEditingChanged: { editing in
                     showSuggestions = editing
                 })
@@ -66,16 +67,15 @@ struct AddressAutocompleteField: View {
                         viewModel.searchQuery = newValue
                     }
                 }
-                
+
                 if viewModel.isSearching {
                     LottieProgressView(size: 40)
                         .padding(.trailing, 8)
                 }
             }
             .padding()
-            .background(Color(.systemBackground))
-            .cornerRadius(15)
-            .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
+            .background(theme.color.surfaceSecondary)
+            .clipShape(RoundedRectangle(cornerRadius: theme.radius.md, style: .continuous))
             
             if showSuggestions && !viewModel.completions.isEmpty {
                 ScrollView {
@@ -97,11 +97,11 @@ struct AddressAutocompleteField: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(completion.title)
                                         .font(.subheadline)
-                                        .foregroundColor(.primary)
+                                        .foregroundStyle(theme.color.textPrimary)
                                     if !completion.subtitle.isEmpty {
                                         Text(completion.subtitle)
                                             .font(.caption)
-                                            .foregroundColor(.secondary)
+                                            .foregroundStyle(theme.color.textSecondary)
                                     }
                                 }
                                 .padding(.vertical, 10)
@@ -111,8 +111,8 @@ struct AddressAutocompleteField: View {
                             Divider()
                         }
                     }
-                    .background(Color(.systemBackground))
-                    .cornerRadius(10)
+                    .background(theme.color.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: theme.radius.sm, style: .continuous))
                     .shadow(radius: 5)
                 }
                 .frame(maxHeight: 200)

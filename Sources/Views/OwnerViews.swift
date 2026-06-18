@@ -4,99 +4,106 @@ import GoogleSignIn
 
 struct OwnerProfileView: View {
     @EnvironmentObject var appState: AppState
-    
+    @Environment(\.theme) private var theme
+
     var body: some View {
         NavigationView {
             ScrollView {
-                VStack(spacing: 20) {
+                VStack(spacing: theme.spacing.lg) {
                     if let user = appState.currentUser {
-                        VStack(spacing: 8) {
+                        VStack(spacing: theme.spacing.xs) {
                             Circle()
-                                .fill(Color.gray.opacity(0.3))
+                                .fill(theme.color.surfaceSecondary)
                                 .frame(width: 100, height: 100)
                                 .overlay(
                                     Image(systemName: user.photoURL ?? "person.fill")
                                         .resizable()
                                         .scaledToFit()
-                                        .padding()
-                                        .foregroundColor(.gray)
+                                        .padding(theme.spacing.lg)
+                                        .foregroundStyle(theme.color.textSecondary)
                                 )
                             Text(user.name)
-                                .font(.title)
-                                .bold()
+                                .font(theme.typography.title)
                             Text(user.username)
-                                .foregroundColor(.secondary)
+                                .font(theme.typography.subheadline)
+                                .foregroundStyle(theme.color.textSecondary)
                             Text(user.address ?? "")
-                                .font(.subheadline)
-                                
+                                .font(theme.typography.subheadline)
+
                             NavigationLink(destination: EditProfileView()) {
                                 Text("ערוך פרופיל")
-                                    .font(.subheadline)
-                                    .padding(.horizontal, 20)
-                                    .padding(.vertical, 8)
-                                    .background(Color.blue)
-                                    .foregroundColor(.white)
-                                    .cornerRadius(20)
+                                    .font(theme.typography.subheadline)
+                                    .padding(.horizontal, theme.spacing.lg)
+                                    .padding(.vertical, theme.spacing.xs)
+                                    .background(theme.color.accent)
+                                    .foregroundStyle(theme.color.textOnAccent)
+                                    .clipShape(Capsule())
                             }
-                            .padding(.top, 4)
+                            .padding(.top, theme.spacing.xxs)
+
+                            NavigationLink(destination: ThemePickerView()) {
+                                Label("מראה ותצוגה", systemImage: "paintbrush.fill")
+                                    .font(theme.typography.subheadline)
+                                    .foregroundStyle(theme.color.accent)
+                            }
+                            .padding(.top, theme.spacing.xxs)
                         }
                         .padding(.top)
-                        
-                        Divider()
-                        
-                        VStack(alignment: .leading) {
+
+                        Divider().overlay(theme.color.separator)
+
+                        VStack(alignment: .leading, spacing: theme.spacing.xs) {
                             Text("החיות שלי")
-                                .font(.headline)
+                                .sectionHeader()
                                 .padding(.horizontal)
-                            
+
                             ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 16) {
+                                HStack(spacing: theme.spacing.md) {
                                     ForEach(appState.pets) { pet in
                                         PetSquareCard(pet: pet)
                                     }
-                                    
+
                                     NavigationLink(destination: AddPetView()) {
-                                        VStack {
+                                        VStack(spacing: theme.spacing.xs) {
                                             Image(systemName: "plus")
                                                 .font(.largeTitle)
-                                                .foregroundColor(.blue)
-                                            Text("הוסף לחיה")
-                                                .font(.headline)
-                                                .foregroundColor(.blue)
+                                            Text("הוסף חיה")
+                                                .font(theme.typography.headline)
                                         }
+                                        .foregroundStyle(theme.color.accent)
                                         .frame(width: 120, height: 120)
                                         .background(
-                                            RoundedRectangle(cornerRadius: 15)
-                                                .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [5]))
-                                                .foregroundColor(.blue)
+                                            RoundedRectangle(cornerRadius: theme.radius.card)
+                                                .strokeBorder(theme.color.accent, style: StrokeStyle(lineWidth: 2, dash: [5]))
                                         )
                                     }
                                 }
                                 .padding(.horizontal)
                             }
                         }
-                        
-                        Divider()
+
+                        Divider().overlay(theme.color.separator)
                             .padding(.vertical)
-                        
-                        VStack(alignment: .leading) {
+
+                        VStack(alignment: .leading, spacing: theme.spacing.xs) {
                             HStack {
                                 Text("פוסטים פעילים")
-                                    .font(.headline)
+                                    .font(theme.typography.headline)
                                 Spacer()
                                 Text("פוסטים: \(appState.myActivePosts.count)")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
+                                    .font(theme.typography.caption)
+                                    .foregroundStyle(theme.color.textSecondary)
                             }
                             .padding(.horizontal)
-                            
+
                             if appState.myActivePosts.isEmpty {
                                 Text("אין פוסטים פעילים")
-                                    .foregroundColor(.secondary)
+                                    .font(theme.typography.subheadline)
+                                    .foregroundStyle(theme.color.textSecondary)
                                     .padding(.horizontal)
                             } else {
                                 ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: 16) {
+                                    HStack(spacing: theme.spacing.md) {
                                         ForEach(appState.myActivePosts) { post in
                                             PostSquareCard(post: post)
                                         }
@@ -105,9 +112,9 @@ struct OwnerProfileView: View {
                                 }
                             }
                         }
-                        
-                        Spacer(minLength: 40)
-                        
+
+                        Spacer(minLength: theme.spacing.xl)
+
                         Button("התנתק") {
                             do {
                                 GIDSignIn.sharedInstance.signOut()
@@ -116,26 +123,22 @@ struct OwnerProfileView: View {
                                 print("Error signing out: \(error)")
                             }
                         }
-                        .padding()
-                        .foregroundColor(.red)
+                        .buttonStyle(DestructiveButtonStyle(fullWidth: false))
+                        .padding(.bottom, theme.spacing.lg)
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(theme.color.background.edgesIgnoringSafeArea(.all))
             .navigationTitle("הפרופיל שלי")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    ThemeToggleView()
-                        .scaleEffect(0.6)
-                        .frame(width: 84, height: 36)
-                }
-            }
         }
     }
 }
 
 struct PetSquareCard: View {
+    @Environment(\.theme) private var theme
     let pet: Pet
-    
+
     private func getValidURL(from urlString: String) -> URL? {
         if urlString.hasPrefix("pawprint") { return nil }
         
@@ -159,86 +162,75 @@ struct PetSquareCard: View {
     var body: some View {
         NavigationLink(destination: AddPetView(petToEdit: pet)) {
             ZStack(alignment: .bottom) {
-                if let urlString = pet.mainPhotoURL ?? pet.photoURL, let url = getValidURL(from: urlString) {
-                    AsyncImage(url: url) { phase in
-                        if let image = phase.image {
-                            image.resizable()
-                                .aspectRatio(contentMode: .fill)
-                        } else if let error = phase.error {
-                            let _ = print("Failed to load: \(url.absoluteString) - Error: \(error)")
-                            VStack {
-                                Spacer()
-                                Image(systemName: "pawprint.fill")
-                                    .resizable()
-                                    .scaledToFit()
-                                    .padding(20)
-                                    .foregroundColor(.blue)
-                                Spacer()
-                            }
-                            .frame(width: 120, height: 120)
-                            .background(Color(.systemGray6))
-                        } else {
-                            LottieProgressView(size: 36)
-                                .frame(width: 120, height: 120)
-                                .background(Color(.systemGray6))
-                        }
-                    }
-                    .frame(width: 120, height: 120)
-                    .clipped()
-                } else {
-                    VStack {
-                        Spacer()
-                        Image(systemName: "pawprint.fill")
-                            .resizable()
-                            .scaledToFit()
-                            .padding(20)
-                            .foregroundColor(.blue)
-                        Spacer()
-                    }
-                    .frame(width: 120, height: 120)
-                    .background(Color(.systemGray6))
+                CachedAsyncImage(
+                    (pet.mainPhotoURL ?? pet.photoURL).flatMap { getValidURL(from: $0)?.absoluteString },
+                    contentMode: .fill,
+                    targetSize: 240
+                ) {
+                    petPlaceholder
                 }
-                
+                .frame(width: 120, height: 120)
+                .clipped()
+
                 Text(pet.name)
-                    .font(.headline)
-                    .foregroundColor(.white)
+                    .font(theme.typography.headline)
+                    .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 4)
+                    .padding(.vertical, theme.spacing.xxs)
                     .background(Color.black.opacity(0.6))
             }
             .frame(width: 120, height: 120)
-            .cornerRadius(15)
+            .clipShape(RoundedRectangle(cornerRadius: theme.radius.card, style: .continuous))
         }
+    }
+
+    private var petPlaceholder: some View {
+        ZStack {
+            theme.color.surfaceSecondary
+            Image(systemName: "pawprint.fill")
+                .resizable()
+                .scaledToFit()
+                .padding(34)
+                .foregroundStyle(theme.color.accent)
+        }
+        .frame(width: 120, height: 120)
     }
 }
 
 struct PostSquareCard: View {
     @EnvironmentObject var appState: AppState
+    @Environment(\.theme) private var theme
     let post: Post
-    
+
+    private var dogNames: String {
+        appState.pets
+            .filter { post.petIds.contains($0.id ?? "") }
+            .map(\.name)
+            .joined(separator: ", ")
+    }
+
     var body: some View {
         NavigationLink(destination: EditPostView(postToEdit: post)) {
-            VStack(spacing: 10) {
+            VStack(spacing: theme.spacing.xs) {
                 Image(systemName: "doc.text.fill")
                     .resizable()
                     .scaledToFit()
                     .frame(height: 30)
-                    .foregroundColor(.blue)
-                
-                let dogNames = appState.pets.filter { post.petIds.contains($0.id ?? "") }.map { $0.name }.joined(separator: ", ")
+                    .foregroundStyle(theme.color.accent)
+
                 Text(dogNames.isEmpty ? "כלבים" : dogNames)
-                    .font(.headline)
-                    .foregroundColor(.primary)
+                    .font(theme.typography.headline)
+                    .foregroundStyle(theme.color.textPrimary)
                     .lineLimit(1)
-                
+
                 Text("₪\(Int(post.payAmount))")
-                    .font(.subheadline)
-                    .foregroundColor(.green)
+                    .font(theme.typography.subheadline)
+                    .foregroundStyle(theme.color.success)
                     .bold()
             }
             .frame(width: 120, height: 120)
-            .background(Color(.systemGray6))
-            .cornerRadius(15)
+            .background(theme.color.surfaceSecondary)
+            .clipShape(RoundedRectangle(cornerRadius: theme.radius.card, style: .continuous))
         }
     }
 }
@@ -246,7 +238,8 @@ struct PostSquareCard: View {
 struct AddPetView: View {
     @EnvironmentObject var appState: AppState
     @Environment(\.presentationMode) var presentationMode
-    
+    @Environment(\.theme) private var theme
+
     var petToEdit: Pet?
     
     @State private var name = ""
@@ -324,12 +317,12 @@ struct AddPetView: View {
                                     Image(systemName: "plus")
                                         .font(.title)
                                     Text("הוסף תמונה")
-                                        .font(.caption)
+                                        .font(theme.typography.caption)
                                 }
                                 .frame(width: slotSize, height: slotSize)
-                                .background(Color(.systemGray6))
-                                .foregroundColor(.blue)
-                                .cornerRadius(10)
+                                .background(theme.color.surfaceSecondary)
+                                .foregroundStyle(theme.color.accent)
+                                .clipShape(RoundedRectangle(cornerRadius: theme.radius.sm, style: .continuous))
                             }
                         }
                     }
@@ -340,8 +333,8 @@ struct AddPetView: View {
                 
                 if currentTotal > 0 {
                     Text("לחיצה ארוכה על תמונה תגדיר אותה כתמונה ראשית ⭐")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(theme.typography.caption)
+                        .foregroundStyle(theme.color.textSecondary)
                 }
             }
             
@@ -395,33 +388,30 @@ struct AddPetView: View {
             
             if let err = errorMessage {
                 Text(err)
-                    .foregroundColor(.red)
+                    .foregroundStyle(theme.color.error)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
-            
+
             if let succ = successMessage {
                 Text(succ)
-                    .foregroundColor(.green)
+                    .foregroundStyle(theme.color.success)
                     .bold()
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
-            
+
             Button(action: savePet) {
                 if isUploading {
                     LottieProgressView(size: 36)
-                        .frame(maxWidth: .infinity, alignment: .center)
                 } else {
                     Text("שמור")
-                        .frame(maxWidth: .infinity)
-                        .foregroundColor(.white)
-                        .padding()
-                        .background(name.isEmpty || ageYears.isEmpty ? Color.gray : Color.blue)
-                        .cornerRadius(8)
                 }
             }
+            .buttonStyle(PrimaryButtonStyle())
             .disabled(name.isEmpty || ageYears.isEmpty || isUploading)
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
         }
         .navigationTitle(petToEdit == nil ? "חיה חדשה" : "ערוך חיה")
         .actionSheet(isPresented: $showActionSheet) {
@@ -549,6 +539,7 @@ struct AddPetView: View {
 }
 
 struct PhotoSlotView: View {
+    @Environment(\.theme) private var theme
     let imageURL: String?
     let image: UIImage?
     let isMain: Bool
@@ -562,13 +553,10 @@ struct PhotoSlotView: View {
                     Image(uiImage: uiImage)
                         .resizable()
                         .scaledToFill()
-                } else if let urlString = imageURL, let url = URL(string: urlString) {
-                    AsyncImage(url: url) { phase in
-                        if let image = phase.image {
-                            image.resizable().scaledToFill()
-                        } else if phase.error != nil {
-                            Color.red
-                        } else {
+                } else if let urlString = imageURL {
+                    CachedAsyncImage(urlString, contentMode: .fill, targetSize: size * 2) {
+                        ZStack {
+                            theme.color.surfaceSecondary
                             LottieProgressView(size: 36)
                         }
                     }
@@ -576,7 +564,7 @@ struct PhotoSlotView: View {
             }
             .frame(width: size, height: size)
             .clipped()
-            .cornerRadius(10)
+            .clipShape(RoundedRectangle(cornerRadius: theme.radius.sm, style: .continuous))
 
             Button(action: onRemove) {
                 Image(systemName: "xmark.circle.fill")

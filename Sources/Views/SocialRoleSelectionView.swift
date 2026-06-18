@@ -4,7 +4,8 @@ import FirebaseFirestore
 
 struct SocialRoleSelectionView: View {
     @EnvironmentObject var appState: AppState
-    
+    @Environment(\.theme) private var theme
+
     @State private var selectedRole: UserRole = .sitter
     @State private var address = ""
     @State private var isLoading = false
@@ -16,100 +17,93 @@ struct SocialRoleSelectionView: View {
     
     var body: some View {
         ZStack {
-            LinearGradient(gradient: Gradient(colors: [Color.blue.opacity(0.1), Color.cyan.opacity(0.1)]), startPoint: .topLeading, endPoint: .bottomTrailing)
-                .ignoresSafeArea()
-            
-            VStack(spacing: 40) {
+            BrandGradient()
+
+            VStack(spacing: theme.spacing.xl) {
                 Text("דוגסיטר")
-                    .font(.system(size: 40, weight: .black, design: .rounded))
-                    .foregroundColor(.blue)
+                    .font(theme.typography.display)
+                    .foregroundStyle(theme.color.accent)
                     .multilineTextAlignment(.center)
                     .padding(.top, 50)
-                
+
                 Text("איך תרצה להשתמש באפליקציה?")
-                    .font(.title2.bold())
-                    .foregroundColor(.primary)
+                    .font(theme.typography.title2)
+                    .foregroundStyle(theme.color.textPrimary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 30)
-                
-                VStack(spacing: 20) {
-                    Button(action: {
-                        selectedRole = .sitter
-                    }) {
-                        HStack {
-                            Image(systemName: "pawprint.fill")
-                                .font(.title)
-                            Text("אני מטפל")
-                                .font(.title3.bold())
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 20)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(15)
-                        .opacity(selectedRole == .sitter ? 1.0 : 0.6)
-                    }
-                    
-                    Button(action: {
-                        selectedRole = .owner
-                    }) {
-                        HStack {
-                            Image(systemName: "person.fill")
-                                .font(.title)
-                            Text("אני בעל כלב")
-                                .font(.title3.bold())
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 20)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(15)
-                        .opacity(selectedRole == .owner ? 1.0 : 0.6)
-                    }
+                    .padding(.horizontal, theme.spacing.xl)
+
+                VStack(spacing: theme.spacing.md) {
+                    roleButton(.sitter, icon: "pawprint.fill", title: "אני מטפל")
+                    roleButton(.owner, icon: "person.fill", title: "אני בעל כלב")
                 }
-                .padding(.horizontal, 40)
-                
-                VStack(alignment: .leading, spacing: 8) {
+                .padding(.horizontal, theme.spacing.xl)
+
+                VStack(alignment: .leading, spacing: theme.spacing.xs) {
                     Text("איפה אתה גר?")
-                        .font(.headline)
-                        .padding(.horizontal, 5)
+                        .sectionHeader()
                     AddressAutocompleteField(placeholder: "כתובת (למשל: רחוב דיזנגוף 50, תל אביב)", text: $address)
                 }
-                .padding(.horizontal, 30)
-                .padding(.top, 10)
-                
-                Button(action: completeRegistration) {
-                    Text("המשך")
-                        .font(.title3.bold())
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(15)
-                }
-                .padding(.horizontal, 40)
-                .padding(.top, 10)
-                
+                .padding(.horizontal, theme.spacing.xl)
+                .padding(.top, theme.spacing.xs)
+
+                Button("המשך", action: completeRegistration)
+                    .buttonStyle(PrimaryButtonStyle())
+                    .padding(.horizontal, theme.spacing.xl)
+                    .padding(.top, theme.spacing.xs)
+                    .disabled(isLoading)
+
                 if isLoading {
                     LottieProgressView(size: 80)
-                        .padding(.top, 20)
+                        .padding(.top, theme.spacing.lg)
                 }
-                
+
                 if !errorMessage.isEmpty {
                     Text(errorMessage)
-                        .foregroundColor(.red)
-                        .font(.subheadline)
+                        .foregroundStyle(theme.color.error)
+                        .font(theme.typography.subheadline)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
-                        .padding(.top, 10)
+                        .padding(.top, theme.spacing.xs)
                 }
-                
+
                 Spacer()
             }
         }
         .environment(\.layoutDirection, .rightToLeft)
     }
     
+    @ViewBuilder
+    private func roleButton(_ role: UserRole, icon: String, title: String) -> some View {
+        let isSelected = selectedRole == role
+        Button {
+            selectedRole = role
+        } label: {
+            HStack {
+                Image(systemName: icon)
+                    .font(.title)
+                Text(title)
+                    .font(theme.typography.title3)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, theme.spacing.lg)
+            .foregroundStyle(isSelected ? theme.color.textOnAccent : theme.color.accent)
+            .background {
+                if isSelected {
+                    LinearGradient(colors: theme.color.accentGradient, startPoint: .leading, endPoint: .trailing)
+                } else {
+                    theme.color.surface
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: theme.radius.card, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: theme.radius.card, style: .continuous)
+                    .stroke(theme.color.accent.opacity(isSelected ? 0 : 0.4), lineWidth: 1.5)
+            )
+            .elevation(isSelected ? theme.elevation.card : theme.elevation.none)
+        }
+        .animation(.easeOut(duration: 0.18), value: isSelected)
+    }
+
     private func completeRegistration() {
         guard !address.isEmpty else {
             errorMessage = "נא להזין כתובת"

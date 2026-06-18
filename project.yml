@@ -8,6 +8,9 @@ packages:
   google-signin-ios:
     url: https://github.com/google/GoogleSignIn-iOS
     majorVersion: 7.0.0
+  lottie-spm:
+    url: https://github.com/airbnb/lottie-spm.git
+    majorVersion: 4.0.0
 targets:
   DogSitter:
     type: application
@@ -15,6 +18,7 @@ targets:
     deploymentTarget: "17.0"
     sources:
       - path: Sources
+      - path: AppIcon.icon
     dependencies:
       - package: firebase-ios-sdk
         product: FirebaseAnalytics
@@ -26,6 +30,8 @@ targets:
         product: GoogleSignIn
       - package: google-signin-ios
         product: GoogleSignInSwift
+      - package: lottie-spm
+        product: Lottie
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.shaqed.dogsitter

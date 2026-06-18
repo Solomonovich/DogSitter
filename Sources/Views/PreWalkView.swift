@@ -5,8 +5,9 @@ import CoreLocation
 struct PreWalkView: View {
     @Environment(\.presentationMode) var presentationMode
     @EnvironmentObject var appState: AppState
+    @Environment(\.theme) private var theme
     let chat: Chat
-    
+
     @ObservedObject private var tracker = LocationTracker.shared
     @State private var totalHoursToday: String = "00:00"
     
@@ -41,22 +42,22 @@ struct PreWalkView: View {
                         VStack(spacing: 8) {
                             Image(systemName: "stopwatch")
                                 .font(.system(size: 40, weight: .bold))
-                                .foregroundColor(.white)
-                            
+                                .foregroundStyle(theme.color.textOnAccent)
+
                             Text("התחל הליכה")
                                 .font(.headline)
-                                .foregroundColor(.white)
+                                .foregroundStyle(theme.color.textOnAccent)
                         }
                         .frame(width: 120, height: 120)
-                        .background(Color(hex: "#4A90D9"))
+                        .background(LinearGradient(colors: theme.color.accentGradient, startPoint: .topLeading, endPoint: .bottomTrailing))
                         .clipShape(Circle())
                         .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
                     }
-                    
+
                     Spacer()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(.systemBackground))
+                .background(theme.color.surface)
                 .cornerRadius(24, corners: [.topLeft, .topRight])
                 .ignoresSafeArea(edges: .bottom)
             }
@@ -67,33 +68,34 @@ struct PreWalkView: View {
                     Button(action: { presentationMode.wrappedValue.dismiss() }) {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 20, weight: .bold))
-                            .foregroundColor(.black)
+                            .foregroundStyle(theme.color.textPrimary)
                             .padding(12)
-                            .background(Color(.systemBackground))
+                            .background(theme.color.surface)
                             .clipShape(Circle())
                             .shadow(color: .black.opacity(0.1), radius: 4)
                     }
+                    .accessibilityLabel("חזור")
                     .padding(.leading, 16)
-                    
+
                     Spacer()
                 }
                 .padding(.top, 16)
-                
+
                 HStack {
-                    Text("Total Walk Hours Today")
+                    Text("סך שעות הליכה היום")
                         .font(.subheadline)
                         .fontWeight(.bold)
-                        .foregroundColor(.black)
-                    
+                        .foregroundStyle(theme.color.textPrimary)
+
                     Spacer()
-                    
+
                     Text(totalHoursToday)
                         .font(.headline)
-                        .foregroundColor(.blue)
+                        .foregroundStyle(theme.color.accent)
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
-                .background(Color(.systemBackground))
+                .background(theme.color.surface)
                 .clipShape(Capsule())
                 .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 3)
                 .padding(.horizontal, 40)
@@ -146,28 +148,4 @@ struct PreWalkView: View {
 }
 
 
-extension Color {
-    init(hex: String) {
-        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-        var int: UInt64 = 0
-        Scanner(string: hex).scanHexInt64(&int)
-        let a, r, g, b: UInt64
-        switch hex.count {
-        case 3: // RGB (12-bit)
-            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
-        case 6: // RGB (24-bit)
-            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
-        case 8: // ARGB (32-bit)
-            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
-        default:
-            (a, r, g, b) = (255, 0, 0, 0)
-        }
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue:  Double(b) / 255,
-            opacity: Double(a) / 255
-        )
-    }
-}
+// Color(hex:) moved to Sources/DesignSystem/Foundations/Color+Hex.swift

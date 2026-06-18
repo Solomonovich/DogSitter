@@ -5,7 +5,8 @@ import FirebaseFirestore
 struct OwnerCreatePostView: View {
     @Binding var selectedTab: Int
     @EnvironmentObject var appState: AppState
-    
+    @Environment(\.theme) private var theme
+
     @State private var startDate = Date()
     @State private var endDate = Date().addingTimeInterval(86400)
     @State private var selectedPetIds: Set<String> = []
@@ -111,7 +112,7 @@ struct OwnerCreatePostView: View {
                             HStack {
                                 Text("כמות בארוחה (גרם):")
                                 Spacer()
-                                TextField("גרם", text: $foodGrams).keyboardType(.numberPad).frame(width: 80)
+                                TextField("גרם", text: $foodGrams).keyboardType(.decimalPad).frame(width: 80)
                             }
                         }
                     }
@@ -155,35 +156,31 @@ struct OwnerCreatePostView: View {
                 
                 if let err = errorMessage {
                     Text(err)
-                        .foregroundColor(.red)
+                        .foregroundStyle(theme.color.error)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity, alignment: .center)
                 }
-                
+
                 if let succ = successMessage {
                     Text(succ)
-                        .foregroundColor(.green)
+                        .foregroundStyle(theme.color.success)
                         .bold()
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity, alignment: .center)
                 }
-                
+
                 Button(action: publishPost) {
                     if isPublishing {
                         LottieProgressView(size: 36)
-                            .frame(maxWidth: .infinity, alignment: .center)
                     } else {
                         Text("פרסם פוסט")
-                            .bold()
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .foregroundColor(.white)
                     }
                 }
-                .padding()
-                .background(Color.blue)
-                .cornerRadius(10)
+                .buttonStyle(PrimaryButtonStyle())
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
                 .disabled(selectedPetIds.isEmpty || paymentAmount.isEmpty || isPublishing)
-                
+
             }
             .navigationTitle("פוסט חדש")
             .onTapGesture {
@@ -297,6 +294,7 @@ struct OwnerCreatePostView: View {
 }
     
 struct MultipleSelectionRow: View {
+    @Environment(\.theme) private var theme
     var title: String
     var isSelected: Bool
     var action: () -> Void
@@ -308,10 +306,10 @@ struct MultipleSelectionRow: View {
                 Spacer()
                 if isSelected {
                     Image(systemName: "checkmark")
-                        .foregroundColor(.blue)
+                        .foregroundStyle(theme.color.accent)
                 }
             }
         }
-        .foregroundColor(.primary)
+        .foregroundStyle(theme.color.textPrimary)
     }
 }

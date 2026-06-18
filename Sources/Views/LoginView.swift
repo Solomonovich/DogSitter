@@ -3,6 +3,7 @@ import FirebaseAuth
 
 struct LoginView: View {
     @Environment(\.layoutDirection) var layoutDirection
+    @Environment(\.theme) private var theme
     @State private var email = ""
     @State private var password = ""
     @State private var errorMessage = ""
@@ -12,89 +13,66 @@ struct LoginView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                LinearGradient(gradient: Gradient(colors: [Color.blue.opacity(0.1), Color.cyan.opacity(0.1)]), startPoint: .topLeading, endPoint: .bottomTrailing)
-                    .ignoresSafeArea()
-                
+                BrandGradient()
+
                 ScrollView {
-                    VStack(spacing: 30) {
-                        VStack(spacing: 12) {
+                    VStack(spacing: theme.spacing.xl) {
+                        VStack(spacing: theme.spacing.sm) {
                             Text("דוגסיטר")
-                                .font(.system(size: 54, weight: .heavy, design: .rounded))
-                                .foregroundColor(.blue)
-                                .shadow(color: .blue.opacity(0.3), radius: 5, x: 0, y: 5)
-                            
+                                .font(theme.typography.display)
+                                .foregroundStyle(theme.color.accent)
+                                .shadow(color: theme.color.accent.opacity(0.3), radius: 5, x: 0, y: 5)
+
                             Text("האפליקציה הטובה ביותר לחיית עזרך")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
+                                .font(theme.typography.headline)
+                                .foregroundStyle(theme.color.textSecondary)
                         }
                         .padding(.top, 60)
-                        .padding(.bottom, 20)
-                        
-                        VStack(spacing: 20) {
-                            CustomTextField(icon: "envelope.fill", placeholder: "אימייל", text: $email, keyboardType: .emailAddress)
-                            
-                            HStack {
-                                Image(systemName: "lock.fill").foregroundColor(.gray)
-                                SecureField("סיסמה", text: $password)
-                            }
-                            .padding()
-                            .background(Color(.systemBackground))
-                            .cornerRadius(15)
-                            .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
+                        .padding(.bottom, theme.spacing.lg)
+
+                        VStack(spacing: theme.spacing.md) {
+                            ThemedInputField(icon: "envelope.fill", placeholder: "אימייל", text: $email,
+                                             keyboard: .emailAddress, textContentType: .emailAddress)
+                            ThemedInputField(icon: "lock.fill", placeholder: "סיסמה", text: $password,
+                                             isSecure: true, textContentType: .password)
                         }
-                        .padding(.horizontal, 30)
-                        
+                        .padding(.horizontal, theme.spacing.xl)
+
                         if !errorMessage.isEmpty {
                             Text(errorMessage)
-                                .foregroundColor(.red)
-                                .font(.subheadline)
+                                .foregroundStyle(theme.color.error)
+                                .font(theme.typography.subheadline)
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal)
                         }
-                        
-                        Button(action: handleLogin) {
-                            HStack {
-                                Text("התחבר")
-                                    .font(.title2.bold())
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(LinearGradient(gradient: Gradient(colors: [.blue, .cyan]), startPoint: .leading, endPoint: .trailing))
-                            .foregroundColor(.white)
-                            .cornerRadius(25)
-                            .shadow(color: .blue.opacity(0.4), radius: 10, x: 0, y: 5)
-                        }
-                        .padding(.horizontal, 30)
-                        .disabled(isLoading || email.isEmpty || password.isEmpty)
-                        .opacity((isLoading || email.isEmpty || password.isEmpty) ? 0.6 : 1.0)
-                        
+
+                        Button("התחבר", action: handleLogin)
+                            .buttonStyle(PrimaryButtonStyle())
+                            .padding(.horizontal, theme.spacing.xl)
+                            .disabled(isLoading || email.isEmpty || password.isEmpty)
+
                         Button(action: resetPassword) {
                             Text("שכחתי סיסמה")
-                                .foregroundColor(.blue)
-                                .font(.subheadline)
+                                .foregroundStyle(theme.color.accent)
+                                .font(theme.typography.subheadline)
                         }
-                        
+
                         Button(action: { showSignUp = true }) {
                             Text("משתמש חדש? הירשם כאן")
-                                .foregroundColor(.blue)
-                                .font(.subheadline)
+                                .foregroundStyle(theme.color.accent)
+                                .font(theme.typography.subheadline)
                         }
                         .navigationDestination(isPresented: $showSignUp) {
                             SignUpView()
                         }
-                        
+
                         SocialAuthButtonsView(isLoading: $isLoading)
-                        
+
                         Spacer()
                     }
                 }
-                
-                if isLoading {
-                    Color.black.opacity(0.3)
-                        .ignoresSafeArea()
-                    LottieProgressView(size: 100)
-                }
             }
+            .loadingOverlay(isLoading, size: 100)
             .navigationBarHidden(true)
             .environment(\.layoutDirection, .rightToLeft)
         }

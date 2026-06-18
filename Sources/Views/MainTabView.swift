@@ -2,7 +2,8 @@ import SwiftUI
 
 struct MainTabView: View {
     @EnvironmentObject var appState: AppState
-    
+    @Environment(\.theme) private var theme
+
     // Maintain state for selected tab
     @State private var sitterTab: Int = 0
     @State private var ownerTab: Int = 3 // Owner defaults to messages
@@ -28,7 +29,7 @@ struct MainTabView: View {
                     }
                     .tag(2)
             }
-            .accentColor(.blue)
+            .tint(theme.color.accent)
         } else {
             TabView(selection: $ownerTab) {
                 OwnerProfileView()
@@ -55,7 +56,7 @@ struct MainTabView: View {
                     }
                     .tag(3)
             }
-            .accentColor(.blue)
+            .tint(theme.color.accent)
         }
     }
 }

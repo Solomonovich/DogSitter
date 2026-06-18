@@ -2,8 +2,9 @@ import SwiftUI
 
 struct PostDetailView: View {
     @EnvironmentObject var appState: AppState
+    @Environment(\.theme) private var theme
     let post: Post
-    
+
     @State private var showConfirm = false
     @State private var isSubmitting = false
     @Environment(\.presentationMode) var presentationMode
@@ -14,16 +15,16 @@ struct PostDetailView: View {
                 // Owner Info
                 HStack(spacing: 16) {
                     Circle()
-                        .fill(Color.gray.opacity(0.3))
+                        .fill(theme.color.surfaceSecondary)
                         .frame(width: 60, height: 60)
-                        .overlay(Image(systemName: post.ownerPhotoURL ?? "person.fill").resizable().padding().foregroundColor(.gray))
-                    
+                        .overlay(Image(systemName: post.ownerPhotoURL ?? "person.fill").resizable().padding().foregroundStyle(theme.color.textSecondary))
+
                     VStack(alignment: .leading) {
                         Text(post.ownerName)
-                            .font(.title2.bold())
+                            .font(theme.typography.title2)
                         Text(post.address)
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(theme.color.textSecondary)
                     }
                 }
                 
@@ -34,7 +35,7 @@ struct PostDetailView: View {
                     VStack(alignment: .leading) {
                         Text("תאריכים")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(theme.color.textSecondary)
                         Text("\(post.startDate.dateValue(), style: .date) - \(post.endDate.dateValue(), style: .date)")
                             .font(.headline)
                     }
@@ -42,7 +43,7 @@ struct PostDetailView: View {
                     VStack(alignment: .leading) {
                         Text("סוג שירות")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(theme.color.textSecondary)
                         Text(post.mappedSittingType.rawValue)
                             .font(.headline)
                     }
@@ -52,10 +53,10 @@ struct PostDetailView: View {
                     Divider()
                     HStack {
                         if pickup == "dropOff" {
-                            Image(systemName: "car.fill").foregroundColor(.blue)
+                            Image(systemName: "car.fill").foregroundStyle(theme.color.accent)
                             Text("בעל הכלב יביא את הכלב")
                         } else {
-                            Image(systemName: "mappin.and.ellipse").foregroundColor(.red)
+                            Image(systemName: "mappin.and.ellipse").foregroundStyle(theme.color.error)
                             Text("המטפל יאסוף מ: \(post.pickupAddress ?? "לא צוין")")
                         }
                     }
@@ -101,13 +102,13 @@ struct PostDetailView: View {
                             Text("מידע נוסף: \(pet.additionalInfo)")
                                 .font(.caption)
                                 .padding()
-                                .background(Color.yellow.opacity(0.2))
-                                .cornerRadius(8)
+                                .background(theme.color.warning.opacity(0.18))
+                                .clipShape(RoundedRectangle(cornerRadius: theme.radius.xs, style: .continuous))
                         }
                     }
                     .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
+                    .background(theme.color.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: theme.radius.md, style: .continuous))
                 }
                 
                 Divider()
@@ -138,12 +139,12 @@ struct PostDetailView: View {
                     if post.medication {
                         Text("תרופות:")
                             .font(.headline)
-                            .foregroundColor(.red)
+                            .foregroundStyle(theme.color.error)
                         if let medInfo = post.medicationInfo {
                             Text(medInfo)
                                 .padding()
-                                .background(Color.red.opacity(0.1))
-                                .cornerRadius(8)
+                                .background(theme.color.error.opacity(0.1))
+                                .clipShape(RoundedRectangle(cornerRadius: theme.radius.xs, style: .continuous))
                         }
                     }
                 }
@@ -155,10 +156,10 @@ struct PostDetailView: View {
                     VStack(alignment: .leading) {
                         Text("תשלום")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(theme.color.textSecondary)
                         Text("₪\(Int(post.payAmount)) \(post.payPer == "day" ? "ליום" : "לפרויקט")")
-                            .font(.title2.bold())
-                            .foregroundColor(.green)
+                            .font(theme.typography.title2)
+                            .foregroundStyle(theme.color.success)
                         Text("תשלום יתבצע \(post.payTiming == "perDay" ? "לפי יום" : "בסוף")")
                             .font(.caption)
                     }
@@ -171,18 +172,11 @@ struct PostDetailView: View {
                 }) {
                     if isSubmitting {
                         LottieProgressView(size: 36)
-                            .frame(maxWidth: .infinity, alignment: .center)
                     } else {
                         Text("אני מעוניין")
-                            .font(.title2.bold())
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(15)
-                            .shadow(radius: 5)
                     }
                 }
+                .buttonStyle(PrimaryButtonStyle())
                 .disabled(isSubmitting)
                 .alert("נשלח לבעל הכלב!", isPresented: $showConfirm) {
                     Button("אישור") {
@@ -203,7 +197,7 @@ struct PostDetailView: View {
             }
             .padding()
         }
-        .background(Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all))
+        .background(theme.color.background.edgesIgnoringSafeArea(.all))
         .navigationTitle("פרטי הבקשה")
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -212,28 +206,23 @@ struct PostDetailView: View {
 }
 
 struct PetAvatarCircle: View {
+    @Environment(\.theme) private var theme
     let pet: Pet
-    
+
+    private var validURLString: String? {
+        guard let photoStr = pet.mainPhotoURL ?? pet.photoURL,
+              !photoStr.isEmpty, !photoStr.hasPrefix("pawprint") else { return nil }
+        return photoStr
+    }
+
     var body: some View {
-        Group {
-            if let photoStr = pet.mainPhotoURL ?? pet.photoURL, !photoStr.isEmpty, let url = URL(string: photoStr), !photoStr.hasPrefix("pawprint") {
-                AsyncImage(url: url) { phase in
-                    if let image = phase.image {
-                        image.resizable().aspectRatio(contentMode: .fill)
-                    } else if phase.error != nil {
-                        Color.gray
-                    } else {
-                        LottieProgressView(size: 25)
-                    }
-                }
-            } else {
-                Circle()
-                    .fill(Color(.systemGray5))
-                    .overlay(Image(systemName: "pawprint.fill").foregroundColor(.blue))
-            }
+        CachedAsyncImage(validURLString, contentMode: .fill, targetSize: 100) {
+            Circle()
+                .fill(theme.color.surfaceSecondary)
+                .overlay(Image(systemName: "pawprint.fill").foregroundStyle(theme.color.accent))
         }
         .frame(width: 50, height: 50)
         .clipShape(Circle())
-        .overlay(Circle().stroke(Color.white, lineWidth: 2))
+        .overlay(Circle().stroke(theme.color.surface, lineWidth: 2))
     }
 }

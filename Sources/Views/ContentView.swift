@@ -3,7 +3,8 @@ import FirebaseAuth
 
 struct ContentView: View {
     @EnvironmentObject var appState: AppState
-    
+    @Environment(\.theme) private var theme
+
     var body: some View {
         if !appState.isAuthenticated {
             LoginView()
@@ -13,16 +14,17 @@ struct ContentView: View {
             } else {
                 LoginView()
             }
-        } else if let user = appState.currentUser, (user.phone == nil || user.phone!.isEmpty || user.address == nil || user.address!.isEmpty) {
+        } else if let user = appState.currentUser,
+                  (user.phone?.isEmpty ?? true) || (user.address?.isEmpty ?? true) {
             ContactDetailsOnboardingView()
         } else if appState.currentUserRole == .none {
             VStack {
                 if let errorMsg = appState.activeError {
                     Text(errorMsg)
-                        .foregroundColor(.red)
+                        .foregroundStyle(theme.color.error)
                         .multilineTextAlignment(.center)
                         .padding()
-                    
+
                     Button("נסה שוב") {
                         if let uid = Auth.auth().currentUser?.uid {
                             Task {
@@ -30,17 +32,16 @@ struct ContentView: View {
                             }
                         }
                     }
-                    .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
+                    .buttonStyle(PrimaryButtonStyle(fullWidth: false))
                 } else {
                     LottieProgressView(size: 100)
                     Text("טוען פרופיל...")
-                        .foregroundColor(.secondary)
-                        .padding(.top, 10)
+                        .foregroundStyle(theme.color.textSecondary)
+                        .padding(.top, theme.spacing.xs)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .screenBackground()
         } else {
             MainTabView()
         }
@@ -49,6 +50,7 @@ struct ContentView: View {
 
 struct ContactDetailsOnboardingView: View {
     @EnvironmentObject var appState: AppState
+    @Environment(\.theme) private var theme
     @State private var phone: String = ""
     @State private var address: String = ""
     @State private var isLoading: Bool = false
@@ -61,70 +63,55 @@ struct ContactDetailsOnboardingView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                LinearGradient(gradient: Gradient(colors: [Color.blue.opacity(0.1), Color.cyan.opacity(0.1)]), startPoint: .topLeading, endPoint: .bottomTrailing)
-                    .ignoresSafeArea()
-                
+                BrandGradient()
+
                 ScrollView {
-                    VStack(spacing: 24) {
-                        VStack(spacing: 8) {
+                    VStack(spacing: theme.spacing.lg) {
+                        VStack(spacing: theme.spacing.xs) {
                             Text("דוגסיטר")
-                                .font(.system(size: 54, weight: .heavy, design: .rounded))
-                                .foregroundColor(.blue)
-                                .shadow(color: .blue.opacity(0.3), radius: 5, x: 0, y: 5)
-                            
+                                .font(theme.typography.display)
+                                .foregroundStyle(theme.color.accent)
+                                .shadow(color: theme.color.accent.opacity(0.3), radius: 5, x: 0, y: 5)
+
                             Text("פרטי יצירת קשר")
-                                .font(.system(size: 22, weight: .bold))
-                                .foregroundColor(.primary)
-                            
+                                .font(theme.typography.title2)
+                                .foregroundStyle(theme.color.textPrimary)
+
                             Text("נצטרך את הפרטים האלו כדי לחבר אותך עם משתמשים אחרים")
-                                .font(.system(size: 16))
-                                .foregroundColor(.secondary)
+                                .font(theme.typography.callout)
+                                .foregroundStyle(theme.color.textSecondary)
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal)
                         }
-                        .padding(.top, 40)
-                        
-                        VStack(alignment: .trailing, spacing: 20) {
+                        .padding(.top, theme.spacing.xl)
+
+                        VStack(alignment: .leading, spacing: theme.spacing.md) {
                             // Phone
-                            VStack(alignment: .trailing, spacing: 8) {
+                            VStack(alignment: .leading, spacing: theme.spacing.xs) {
                                 Text("מספר טלפון")
-                                    .font(.headline)
-                                    .foregroundColor(.gray)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                
-                                HStack {
-                                    Image(systemName: "phone.fill").foregroundColor(.gray)
-                                    TextField("05X-XXXXXXX", text: $phone)
-                                        .keyboardType(.phonePad)
-                                        .multilineTextAlignment(.trailing)
-                                }
-                                .padding()
-                                .background(Color(.systemBackground))
-                                .cornerRadius(15)
-                                .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 5)
+                                    .sectionHeader()
+                                ThemedInputField(icon: "phone.fill", placeholder: "05X-XXXXXXX", text: $phone,
+                                                 keyboard: .phonePad, textContentType: .telephoneNumber)
                             }
-                            
+
                             // Address
-                            VStack(alignment: .trailing, spacing: 8) {
+                            VStack(alignment: .leading, spacing: theme.spacing.xs) {
                                 Text("כתובת")
-                                    .font(.headline)
-                                    .foregroundColor(.gray)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                
+                                    .sectionHeader()
                                 AddressAutocompleteField(placeholder: "רחוב, עיר", text: $address)
                             }
-                            
+
                             if let error = errorMessage {
                                 Text(error)
-                                    .foregroundColor(.red)
-                                    .font(.system(size: 14))
+                                    .foregroundStyle(theme.color.error)
+                                    .font(theme.typography.footnote)
                             }
                         }
-                        .padding(.horizontal, 24)
-                        
-                        Spacer(minLength: 40)
-                        
-                        Button(action: {
+                        .padding(.horizontal, theme.spacing.lg)
+
+                        Spacer(minLength: theme.spacing.xl)
+
+                        Button {
                             if phone.count < 9 {
                                 errorMessage = "נא להזין מספר טלפון תקין"
                                 return
@@ -134,27 +121,17 @@ struct ContactDetailsOnboardingView: View {
                                 return
                             }
                             saveDetails()
-                        }) {
-                            HStack {
-                                if isLoading {
-                                    LottieProgressView(size: 36)
-                                } else {
-                                    Text("המשך")
-                                        .font(.headline)
-                                        .bold()
-                                }
+                        } label: {
+                            if isLoading {
+                                LottieProgressView(size: 36)
+                            } else {
+                                Text("המשך")
                             }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(LinearGradient(gradient: Gradient(colors: [.blue, .cyan]), startPoint: .leading, endPoint: .trailing))
-                            .cornerRadius(15)
-                            .shadow(color: .blue.opacity(0.4), radius: 10, x: 0, y: 5)
-                            .opacity(isValid ? 1.0 : 0.5)
                         }
+                        .buttonStyle(PrimaryButtonStyle())
                         .disabled(!isValid || isLoading)
-                        .padding(.horizontal, 24)
-                        .padding(.bottom, 40)
+                        .padding(.horizontal, theme.spacing.lg)
+                        .padding(.bottom, theme.spacing.xl)
                     }
                 }
             }

@@ -5,50 +5,42 @@ import GoogleSignIn
 
 struct ProfileView: View {
     @EnvironmentObject var appState: AppState
-    
+    @Environment(\.theme) private var theme
+
     var body: some View {
         NavigationView {
             Form {
                 if let user = appState.currentUser {
                     Section(header: Text("פרטים אישיים")) {
-                        HStack {
-                            Text("שם מלא")
-                            Spacer()
-                            Text(user.name).foregroundColor(.secondary)
-                        }
-                        HStack {
-                            Text("שם משתמש")
-                            Spacer()
-                            Text(user.username).foregroundColor(.secondary)
-                        }
-                        HStack {
-                            Text("כתובת")
-                            Spacer()
-                            Text(user.address ?? "").foregroundColor(.secondary)
-                        }
-                        HStack {
-                            Text("טלפון")
-                            Spacer()
-                            Text(user.phone ?? "").foregroundColor(.secondary)
-                        }
+                        profileRow("שם מלא", user.name)
+                        profileRow("שם משתמש", user.username)
+                        profileRow("כתובת", user.address ?? "")
+                        profileRow("טלפון", user.phone ?? "")
                     }
                 }
-                
-                
+
+                Section {
+                    NavigationLink(destination: ThemePickerView()) {
+                        Label("מראה ותצוגה", systemImage: "paintbrush.fill")
+                            .foregroundStyle(theme.color.accent)
+                    }
+                }
+
                 Section {
                     NavigationLink(destination: EditProfileView()) {
                         Text("ערוך פרופיל")
-                            .foregroundColor(.blue)
+                            .font(theme.typography.headline)
+                            .foregroundStyle(theme.color.accent)
                             .frame(maxWidth: .infinity, alignment: .center)
                     }
                     .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
+                    .background(theme.color.surfaceSecondary)
+                    .clipShape(RoundedRectangle(cornerRadius: theme.radius.md, style: .continuous))
                 }
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
-                
+
                 Section {
                     Button(action: {
                         do {
@@ -59,27 +51,29 @@ struct ProfileView: View {
                         }
                     }) {
                         Text("התנתק")
-                            .foregroundColor(.red)
+                            .font(theme.typography.headline)
+                            .foregroundStyle(theme.color.error)
                             .frame(maxWidth: .infinity, alignment: .center)
                     }
                     .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
+                    .background(theme.color.surfaceSecondary)
+                    .clipShape(RoundedRectangle(cornerRadius: theme.radius.md, style: .continuous))
                 }
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
             }
             .scrollContentBackground(.hidden)
-            .background(Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all))
+            .background(theme.color.background.edgesIgnoringSafeArea(.all))
             .navigationTitle("הפרופיל שלי")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    ThemeToggleView()
-                        .scaleEffect(0.6)
-                        .frame(width: 84, height: 36) // scaled down from 140x60
-                }
-            }
+        }
+    }
+
+    private func profileRow(_ label: String, _ value: String) -> some View {
+        HStack {
+            Text(label)
+            Spacer()
+            Text(value).foregroundStyle(theme.color.textSecondary)
         }
     }
 }
@@ -88,7 +82,8 @@ struct ProfileView: View {
 struct EditProfileView: View {
     @EnvironmentObject var appState: AppState
     @Environment(\.presentationMode) var presentationMode
-    
+    @Environment(\.theme) private var theme
+
     @State private var name: String = ""
     @State private var username: String = ""
     @State private var address: String = ""
@@ -111,30 +106,25 @@ struct EditProfileView: View {
             
             if let error = errorMessage {
                 Text(error)
-                    .foregroundColor(.red)
+                    .foregroundStyle(theme.color.error)
                     .multilineTextAlignment(.center)
             }
-            
+
             Button(action: saveProfile) {
                 if isSaving {
                     LottieProgressView(size: 36)
-                        .frame(maxWidth: .infinity, alignment: .center)
                 } else {
                     Text("שמור")
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .foregroundColor(.white)
-                        .padding()
-                        .background((name.isEmpty || username.isEmpty) ? Color.gray : Color.blue)
-                        .cornerRadius(8)
                 }
             }
+            .buttonStyle(PrimaryButtonStyle())
             .disabled(name.isEmpty || username.isEmpty || isSaving)
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
-            .padding(.top, 16)
+            .padding(.top, theme.spacing.md)
         }
         .scrollContentBackground(.hidden)
-        .background(Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all))
+        .background(theme.color.background.edgesIgnoringSafeArea(.all))
         .environment(\.layoutDirection, .rightToLeft)
         .navigationTitle("ערוך פרופיל")
         .navigationBarTitleDisplayMode(.inline)

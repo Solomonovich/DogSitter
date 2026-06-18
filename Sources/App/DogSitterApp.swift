@@ -32,6 +32,7 @@ struct DogSitterApp: App {
                 .environment(\.locale, Locale(identifier: "he_IL"))
                 .environmentObject(appState)
                 .environmentObject(themeManager)
+                .environment(\.theme, themeManager.theme)
                 .preferredColorScheme(themeManager.isDarkMode ? .dark : .light)
                 .overlay(
                     Group {
@@ -49,11 +50,23 @@ struct DogSitterApp: App {
 
 class ThemeManager: ObservableObject {
     @AppStorage("isDarkMode") var isDarkMode: Bool = true
-    
+    @AppStorage("themePalette") private var paletteRaw: String = ThemePalette.classic.rawValue
+
     @Published var isAnimating = false
     @Published var circleCenter: CGPoint = .zero
     @Published var colorSchemeTransitioningToDark: Bool? = nil
-    
+
+    /// The user-selected color palette (persisted).
+    var palette: ThemePalette {
+        get { ThemePalette(rawValue: paletteRaw) ?? .classic }
+        set { objectWillChange.send(); paletteRaw = newValue.rawValue }
+    }
+
+    /// The fully-resolved theme to inject into the environment.
+    var theme: Theme {
+        palette.theme(for: isDarkMode ? .dark : .light)
+    }
+
     func toggleTheme(from location: CGPoint) {
         guard !isAnimating else { return }
         

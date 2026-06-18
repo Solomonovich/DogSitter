@@ -26,20 +26,21 @@ class WalkViewModel: ObservableObject {
 struct WalkFullView: View {
     @Environment(\.presentationMode) var presentationMode
     @EnvironmentObject var appState: AppState
-    
+    @Environment(\.theme) private var theme
+
     let walkId: String
     let chatId: String
     let isSitter: Bool
-    
+
     @StateObject private var viewModel = WalkViewModel()
     @ObservedObject private var tracker = LocationTracker.shared
-    
+
     @State private var totalHoursToday: String = "00:00"
-    
+
     // Image Upload
     @State private var showingImagePicker = false
     @State private var selectedLightboxURL: String? = nil
-    
+
     // Computed duration based on the shared tracker or the static completed walk duration
     var activeDuration: Double {
         if viewModel.walk?.status == "active" {
@@ -48,9 +49,9 @@ struct WalkFullView: View {
             return viewModel.walk?.duration ?? 0.0
         }
     }
-    
-    // Upload Timer
-    let uploadTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
+
+    // Upload Timer — held in @State so it isn't recreated on every body evaluation.
+    @State private var uploadTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
     
     @State private var region = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 32.0853, longitude: 34.7818),
@@ -59,25 +60,26 @@ struct WalkFullView: View {
     
     var body: some View {
         ZStack {
-            Color(.systemBackground).ignoresSafeArea()
-            
+            theme.color.background.ignoresSafeArea()
+
             VStack(spacing: 0) {
                 // Map Area
                 GeometryReader { geo in
                     ZStack(alignment: .bottomTrailing) {
-                        WalkMapView(walk: viewModel.walk, tracker: tracker, region: $region)
+                        WalkMapView(walk: viewModel.walk, tracker: tracker, region: $region, accentColor: theme.color.accent)
                             .frame(height: geo.size.height)
-                        
+
                         if isSitter && viewModel.walk?.status == "active" {
                             Button(action: { showingImagePicker = true }) {
                                 Image(systemName: "camera.fill")
                                     .font(.system(size: 20))
-                                    .foregroundColor(.blue)
+                                    .foregroundStyle(theme.color.accent)
                                     .frame(width: 48, height: 48)
-                                    .background(Color(.systemBackground))
+                                    .background(theme.color.surface)
                                     .clipShape(Circle())
                                     .shadow(color: .black.opacity(0.2), radius: 5, y: 2)
                             }
+                            .accessibilityLabel("צלם תמונה")
                             .padding()
                         }
                     }
@@ -93,63 +95,58 @@ struct WalkFullView: View {
                                 if viewModel.walk?.status == "active" {
                                     Text("פעיל")
                                         .bold()
-                                        .foregroundColor(.green)
+                                        .foregroundStyle(theme.color.success)
                                 } else {
                                     let startTimeStr = viewModel.walk?.startTime.dateValue().formatted(date: .omitted, time: .shortened) ?? ""
                                     let endTimeStr = viewModel.walk?.endTime?.dateValue().formatted(date: .omitted, time: .shortened) ?? ""
                                     Text("\(startTimeStr) - \(endTimeStr)")
-                                        .foregroundColor(.gray)
+                                        .foregroundStyle(theme.color.textSecondary)
                                 }
-                                
+
                                 Spacer()
-                                
+
                                 Text("זמן - \(formatElapsedTime(Int(activeDuration * 60)))")
                                     .bold()
-                                    .foregroundColor(Color(hex: "#4A90D9"))
+                                    .foregroundStyle(theme.color.accent)
                             }
                         }
-                        
+
                         // Distance Bubble
                         InfoBubble {
                             HStack {
                                 Text("\(String(format: "%.2f", viewModel.walk?.status == "active" ? tracker.totalDistance : (viewModel.walk?.distance ?? 0.0))) ק״מ")
-                                
+
                                 Spacer()
-                                
+
                                 Text("מרחק הליכה")
                                     .bold()
-                                    .foregroundColor(Color(hex: "#4A90D9"))
+                                    .foregroundStyle(theme.color.accent)
                             }
                         }
-                        
+
                         // Photos Bubble
                         InfoBubble {
                             VStack {
                                 Text("תמונות")
                                     .font(.system(size: 14, weight: .bold))
-                                    .foregroundColor(Color(hex: "#4A90D9"))
-                                
+                                    .foregroundStyle(theme.color.accent)
+
                                 ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack {
+                                    LazyHStack {
                                         if let photos = viewModel.walk?.photoURLs, !photos.isEmpty {
                                             ForEach(photos, id: \.self) { urlString in
-                                                AsyncImage(url: URL(string: urlString)) { phase in
-                                                    if let image = phase.image {
-                                                        image.resizable()
-                                                            .aspectRatio(contentMode: .fill)
-                                                    } else {
-                                                        Color.gray.opacity(0.3)
-                                                    }
+                                                CachedAsyncImage(urlString, contentMode: .fill, targetSize: 160) {
+                                                    theme.color.surfaceSecondary
                                                 }
                                                 .frame(width: 80, height: 80)
-                                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                                .clipShape(RoundedRectangle(cornerRadius: theme.radius.md))
                                                 .onTapGesture {
                                                     selectedLightboxURL = urlString
                                                 }
                                             }
                                         } else {
                                             Text("אין תמונות עדיין")
-                                                .foregroundColor(.gray)
+                                                .foregroundStyle(theme.color.textSecondary)
                                                 .frame(maxWidth: .infinity, alignment: .center)
                                         }
                                     }
@@ -158,16 +155,16 @@ struct WalkFullView: View {
                             }
                         }
                         .frame(minHeight: 130)
-                        
+
                         if viewModel.walk?.status == "active" {
                             Button(action: stopWalk) {
                                 Text("עצור הליכה")
                                     .bold()
-                                    .foregroundColor(.white)
+                                    .foregroundStyle(theme.color.textOnAccent)
                                     .frame(maxWidth: .infinity)
                                     .frame(height: 54)
-                                    .background(Color(hex: "#E53935"))
-                                    .cornerRadius(12)
+                                    .background(theme.color.error)
+                                    .clipShape(RoundedRectangle(cornerRadius: theme.radius.md, style: .continuous))
                             }
                             .padding(.top, 8)
                         }
@@ -175,7 +172,7 @@ struct WalkFullView: View {
                     .padding()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(.systemBackground))
+                .background(theme.color.surface)
                 .cornerRadius(24, corners: [.topLeft, .topRight])
                 .ignoresSafeArea(edges: .bottom)
             }
@@ -186,33 +183,34 @@ struct WalkFullView: View {
                     Button(action: { presentationMode.wrappedValue.dismiss() }) {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 20, weight: .bold))
-                            .foregroundColor(.black)
+                            .foregroundStyle(theme.color.textPrimary)
                             .padding(12)
-                            .background(Color(.systemBackground))
+                            .background(theme.color.surface)
                             .clipShape(Circle())
                             .shadow(color: .black.opacity(0.1), radius: 4)
                     }
+                    .accessibilityLabel("חזור")
                     .padding(.leading, 16)
-                    
+
                     Spacer()
                 }
                 .padding(.top, 16)
-                
+
                 HStack {
-                    Text("Total Walk Hours Today")
+                    Text("סך שעות הליכה היום")
                         .font(.subheadline)
                         .fontWeight(.bold)
-                        .foregroundColor(.black)
-                    
+                        .foregroundStyle(theme.color.textPrimary)
+
                     Spacer()
-                    
+
                     Text(totalHoursToday)
                         .font(.headline)
-                        .foregroundColor(.blue)
+                        .foregroundStyle(theme.color.accent)
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
-                .background(Color(.systemBackground))
+                .background(theme.color.surface)
                 .clipShape(Capsule())
                 .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 3)
                 .padding(.horizontal, 40)
@@ -222,14 +220,13 @@ struct WalkFullView: View {
             }
             
             // Lightbox
-            if let urlString = selectedLightboxURL, let url = URL(string: urlString) {
+            if let urlString = selectedLightboxURL {
                 ZStack {
                     Color.black.opacity(0.85).ignoresSafeArea().onTapGesture { selectedLightboxURL = nil }
-                    AsyncImage(url: url) { phase in
-                        if let image = phase.image {
-                            image.resizable().aspectRatio(contentMode: .fit).padding()
-                        }
+                    CachedAsyncImage(urlString, contentMode: .fit, targetSize: 1000) {
+                        LottieProgressView(size: 40)
                     }
+                    .padding()
                     VStack {
                         HStack {
                             Button(action: { selectedLightboxURL = nil }) {
@@ -320,12 +317,13 @@ struct InfoBubble<Content: View>: View {
     init(@ViewBuilder content: () -> Content) {
         self.content = content()
     }
+    @Environment(\.theme) private var theme
     var body: some View {
         content
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(Color(hex: "#E3F2FD"))
-            .cornerRadius(16)
+            .background(theme.color.accent.opacity(0.10))
+            .clipShape(RoundedRectangle(cornerRadius: theme.radius.card, style: .continuous))
     }
 }
 
@@ -334,7 +332,8 @@ struct WalkMapView: UIViewRepresentable {
     var walk: Walk?
     @ObservedObject var tracker: LocationTracker
     @Binding var region: MKCoordinateRegion
-    
+    var accentColor: Color = Color(hex: "#4A90D9")
+
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView()
         map.delegate = context.coordinator
@@ -404,7 +403,7 @@ struct WalkMapView: UIViewRepresentable {
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
             if let polyline = overlay as? MKPolyline {
                 let renderer = MKPolylineRenderer(polyline: polyline)
-                renderer.strokeColor = UIColor(red: 74/255, green: 144/255, blue: 217/255, alpha: 1.0)
+                renderer.strokeColor = UIColor(parent.accentColor)
                 renderer.lineWidth = 4
                 return renderer
             }

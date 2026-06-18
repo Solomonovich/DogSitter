@@ -4,7 +4,8 @@ import CoreLocation
 
 struct BrowsePostsView: View {
     @EnvironmentObject var appState: AppState
-    
+    @Environment(\.theme) private var theme
+
     @State private var selectedPost: Post?
     @State private var sitterLocation: CLLocationCoordinate2D?
     @State private var hasGeocoded = false
@@ -25,9 +26,14 @@ struct BrowsePostsView: View {
     @State private var previousPostIndex: Int = 0
     @State private var mapCenter: CLLocationCoordinate2D?
     
-    var sortedPosts: [Post] {
+    // Cached results — recomputed only when inputs change (posts / location / filters),
+    // not on every body evaluation. Avoids per-frame distance sorting jank during drags.
+    @State private var sortedPosts: [Post] = []
+    @State private var mapAnnotations: [MKPointAnnotation] = []
+
+    private func computeSortedPosts() -> [Post] {
         var posts = appState.posts
-        
+
         if let range = selectedDateRange {
             posts = posts.filter { post in
                 let postStart = post.startDate.dateValue()
@@ -35,40 +41,40 @@ struct BrowsePostsView: View {
                 return postStart <= range.upperBound && postEnd >= range.lowerBound
             }
         }
-        
+
         if selectedPetCount != "הכל" {
             posts = posts.filter { String($0.petIds.count) == selectedPetCount || (selectedPetCount == "3+" && $0.petIds.count >= 3) }
         }
-        
+
         guard let location = sitterLocation else { return posts }
-        
+        let myLoc = CLLocation(latitude: location.latitude, longitude: location.longitude)
+
         return posts.sorted { p1, p2 in
             let loc1 = CLLocation(latitude: p1.latitude ?? 0, longitude: p1.longitude ?? 0)
             let loc2 = CLLocation(latitude: p2.latitude ?? 0, longitude: p2.longitude ?? 0)
-            let myLoc = CLLocation(latitude: location.latitude, longitude: location.longitude)
-            
+
             let dist1 = loc1.distance(from: myLoc)
             let dist2 = loc2.distance(from: myLoc)
-            
+
             let maxDist = 50000.0
             let distScore1 = max(0, 1 - (dist1 / maxDist))
             let distScore2 = max(0, 1 - (dist2 / maxDist))
-            
+
             let maxTime = 30 * 24 * 3600.0
             let t1 = p1.startDate.dateValue().timeIntervalSinceNow
             let t2 = p2.startDate.dateValue().timeIntervalSinceNow
             let timeScore1 = max(0, 1 - (t1 / maxTime))
             let timeScore2 = max(0, 1 - (t2 / maxTime))
-            
+
             let score1 = (distScore1 * 0.6) + (timeScore1 * 0.4)
             let score2 = (distScore2 * 0.6) + (timeScore2 * 0.4)
-            
+
             return score1 > score2
         }
     }
-    
-    var mapAnnotations: [MKPointAnnotation] {
-        sortedPosts.compactMap { post in
+
+    private func computeAnnotations(_ posts: [Post]) -> [MKPointAnnotation] {
+        posts.compactMap { post in
             guard let lat = post.latitude, let lon = post.longitude else { return nil }
             let ann = MKPointAnnotation()
             ann.coordinate = CLLocationCoordinate2D(latitude: lat, longitude: lon)
@@ -76,6 +82,12 @@ struct BrowsePostsView: View {
             ann.subtitle = post.id
             return ann
         }
+    }
+
+    private func recomputePosts() {
+        let result = computeSortedPosts()
+        sortedPosts = result
+        mapAnnotations = computeAnnotations(result)
     }
     
     var currentSelectedPostID: String? {
@@ -94,6 +106,7 @@ struct BrowsePostsView: View {
                 centerCoordinate: $mapCenter,
                 annotations: mapAnnotations,
                 selectedAnnotationID: currentSelectedPostID,
+                accentColor: theme.color.accent,
                 onAnnotationTapped: { ann in
                     if let id = ann.subtitle, let post = sortedPosts.first(where: { $0.id == id }) {
                         if let idx = sortedPosts.firstIndex(where: { $0.id == post.id }) {
@@ -127,7 +140,7 @@ struct BrowsePostsView: View {
                     if !isShowingPostDetail {
                         VStack {
                             Capsule()
-                                .fill(Color.gray.opacity(0.5))
+                                .fill(theme.color.separator)
                                 .frame(width: 40, height: 5)
                                 .padding(.top, 8)
                                 .padding(.bottom, 10)
@@ -184,9 +197,11 @@ struct BrowsePostsView: View {
                                     }
                                 }
                             } else {
-                                Text("אין פוסטים שמתאימים לסינון")
-                                    .foregroundColor(.gray)
-                                    .padding()
+                                EmptyStateView(
+                                    icon: "magnifyingglass",
+                                    title: "אין פוסטים שמתאימים לסינון",
+                                    message: "נסה לשנות את הסינון או להרחיב את טווח התאריכים"
+                                )
                             }
                         } else {
                             ScrollView {
@@ -229,29 +244,41 @@ struct BrowsePostsView: View {
                 }
                 .frame(height: sheetHeight)
                 .frame(maxWidth: .infinity)
-                .background(Color(.systemBackground))
-                .cornerRadius(20, corners: [.topLeft, .topRight])
+                .background(theme.color.surface)
+                .cornerRadius(theme.radius.lg, corners: [.topLeft, .topRight])
                 .shadow(color: .black.opacity(0.15), radius: 10, y: -5)
                 .offset(y: isShowingPostDetail ? max(0, detailDragOffset) : 0)
             }
             .ignoresSafeArea(.all, edges: .bottom)
         }
         .onAppear {
+            recomputePosts()
             if !hasGeocoded {
                 hasGeocoded = true
-                let geocoder = CLGeocoder()
-                if let currentUser = appState.currentUser, let address = currentUser.address {
-                    geocoder.geocodeAddressString(address) { placemarks, error in
-                        if let loc = placemarks?.first?.location {
+                if let address = appState.currentUser?.address {
+                    let geocoder = CLGeocoder()
+                    geocoder.geocodeAddressString(address) { placemarks, _ in
+                        guard let loc = placemarks?.first?.location else { return }
+                        DispatchQueue.main.async {
                             self.sitterLocation = loc.coordinate
                             self.mapCenter = loc.coordinate
+                            self.recomputePosts()
                         }
                     }
                 }
             }
         }
+        .onReceive(appState.$posts) { _ in
+            recomputePosts()
+        }
+        .onChange(of: selectedDateRange) { _, _ in
+            recomputePosts()
+        }
+        .onChange(of: selectedPetCount) { _, _ in
+            recomputePosts()
+        }
     }
-    
+
     func openPost(_ post: Post) {
         previousPostIndex = selectedPostIndex
         if let idx = sortedPosts.firstIndex(where: { $0.id == post.id }) {
@@ -285,30 +312,17 @@ struct BrowsePostsView: View {
     }
 }
 
-extension View {
-    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
-        clipShape(RoundedCorner(radius: radius, corners: corners))
-    }
-}
-
-struct RoundedCorner: Shape {
-    var radius: CGFloat = .infinity
-    var corners: UIRectCorner = .allCorners
-
-    func path(in rect: CGRect) -> Path {
-        let path = UIBezierPath(roundedRect: rect, byRoundingCorners: corners, cornerRadii: CGSize(width: radius, height: radius))
-        return Path(path.cgPath)
-    }
-}
+// cornerRadius(_:corners:) and RoundedCorner moved to Sources/DesignSystem/Foundations/Radius.swift
 
 struct FilterBarView: View {
+    @Environment(\.theme) private var theme
     @Binding var selectedDateRange: ClosedRange<Date>?
     @Binding var selectedPetCount: String
     @State private var isExpanded: Bool = false
     @State private var showCalendar: Bool = false
-    
+
     let petCounts = ["הכל", "1", "2", "3+"]
-    
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             if isExpanded {
@@ -317,8 +331,8 @@ struct FilterBarView: View {
                     DatesFilterView(selectedDateRange: $selectedDateRange, showCalendar: $showCalendar)
                 }
                 .padding(12)
-                .background(Color(.systemBackground).opacity(0.95))
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .background(theme.color.surface.opacity(0.97))
+                .clipShape(RoundedRectangle(cornerRadius: theme.radius.card, style: .continuous))
                 .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 4)
                 .transition(.asymmetric(
                     insertion: .scale(scale: 0.8, anchor: .topTrailing).combined(with: .opacity).combined(with: .offset(x: 20)),
@@ -334,36 +348,38 @@ struct FilterBarView: View {
             }) {
                 Image(systemName: "slider.horizontal.3")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(isExpanded ? .white : .gray)
+                    .foregroundStyle(isExpanded ? theme.color.textOnAccent : theme.color.textSecondary)
                     .frame(width: 40, height: 40)
-                    .background(isExpanded ? Color.blue : Color(.systemBackground))
+                    .background(isExpanded ? theme.color.accent : theme.color.surface)
                     .clipShape(Circle())
                     .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
             }
+            .accessibilityLabel("סינון")
             .padding(.trailing, 16)
         }
     }
 }
 
 struct PetCountFilterView: View {
+    @Environment(\.theme) private var theme
     @Binding var selectedPetCount: String
     let petCounts: [String]
-    
+
     var body: some View {
         VStack(alignment: .trailing, spacing: 4) {
             Text("מספר כלבים")
-                .font(.caption.bold())
-                .foregroundColor(.primary)
-            
+                .font(theme.typography.captionBold)
+                .foregroundStyle(theme.color.textPrimary)
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
                     ForEach(petCounts, id: \.self) { count in
                         Text(count)
-                            .font(.caption)
+                            .font(theme.typography.caption)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
-                            .background(selectedPetCount == count ? Color.blue : Color(.systemGray6))
-                            .foregroundColor(selectedPetCount == count ? .white : .primary)
+                            .background(selectedPetCount == count ? theme.color.accent : theme.color.surfaceSecondary)
+                            .foregroundStyle(selectedPetCount == count ? theme.color.textOnAccent : theme.color.textPrimary)
                             .clipShape(Capsule())
                             .onTapGesture {
                                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -379,9 +395,10 @@ struct PetCountFilterView: View {
 }
 
 struct DatesFilterView: View {
+    @Environment(\.theme) private var theme
     @Binding var selectedDateRange: ClosedRange<Date>?
     @Binding var showCalendar: Bool
-    
+
     var dateString: String {
         guard let range = selectedDateRange else { return "" }
         let formatter = DateFormatter()
@@ -392,9 +409,9 @@ struct DatesFilterView: View {
     var body: some View {
         VStack(alignment: .trailing, spacing: 4) {
             Text("תאריכים")
-                .font(.caption.bold())
-                .foregroundColor(.primary)
-            
+                .font(theme.typography.captionBold)
+                .foregroundStyle(theme.color.textPrimary)
+
             Button(action: {
                 withAnimation {
                     showCalendar.toggle()
@@ -408,19 +425,19 @@ struct DatesFilterView: View {
                     }
                     Image(systemName: "calendar")
                 }
-                .font(.caption)
+                .font(theme.typography.caption)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                .background(showCalendar || selectedDateRange != nil ? Color.blue : Color(.systemGray6))
-                .foregroundColor(showCalendar || selectedDateRange != nil ? .white : .primary)
-                .cornerRadius(8)
+                .background(showCalendar || selectedDateRange != nil ? theme.color.accent : theme.color.surfaceSecondary)
+                .foregroundStyle(showCalendar || selectedDateRange != nil ? theme.color.textOnAccent : theme.color.textPrimary)
+                .clipShape(RoundedRectangle(cornerRadius: theme.radius.xs, style: .continuous))
             }
-            
+
             if showCalendar {
                 DragSelectCalendarView(selectedDateRange: $selectedDateRange)
                     .frame(width: 280)
-                    .background(Color(.systemBackground))
-                    .cornerRadius(12)
+                    .background(theme.color.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: theme.radius.md, style: .continuous))
                     .shadow(radius: 5)
                     .padding(.top, 8)
             }
@@ -429,8 +446,9 @@ struct DatesFilterView: View {
 }
 
 struct DragSelectCalendarView: View {
+    @Environment(\.theme) private var theme
     @Binding var selectedDateRange: ClosedRange<Date>?
-    
+
     @State private var dragStartDate: Date? = nil
     @State private var hoverEndDate: Date? = nil
     @State private var monthOffset: Int = 0
@@ -483,23 +501,23 @@ struct DragSelectCalendarView: View {
                     Image(systemName: "chevron.right")
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
-                        .foregroundColor(monthOffset > 0 ? .blue : .gray.opacity(0.5))
+                        .foregroundStyle(monthOffset > 0 ? theme.color.accent : theme.color.textSecondary.opacity(0.5))
                 }
                 .disabled(monthOffset <= 0)
-                
+
                 Spacer()
                 Text(monthString(for: monthOffset))
-                    .font(.headline)
-                    .foregroundColor(Color(white: 0.2))
+                    .font(theme.typography.headline)
+                    .foregroundStyle(theme.color.textPrimary)
                 Spacer()
-                
+
                 Button(action: {
                     withAnimation { monthOffset += 1 }
                 }) {
                     Image(systemName: "chevron.left")
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
-                        .foregroundColor(.blue)
+                        .foregroundStyle(theme.color.accent)
                 }
             }
             .padding(.top, 4)
@@ -519,7 +537,7 @@ struct DragSelectCalendarView: View {
                 }) {
                     Text("נקה בחירה")
                         .font(.caption)
-                        .foregroundColor(.red)
+                        .foregroundStyle(theme.color.error)
                 }
                 .padding(.bottom, 8)
             }
@@ -558,7 +576,7 @@ struct DragSelectCalendarView: View {
                     Text(day)
                         .font(.caption)
                         .bold()
-                        .foregroundColor(Color(white: 0.2))
+                        .foregroundStyle(theme.color.textSecondary)
                 }
                 
                 ForEach(gridDays, id: \.self) { date in
@@ -567,7 +585,7 @@ struct DragSelectCalendarView: View {
                     
                     Text("\(calendar.component(.day, from: date))")
                         .font(.system(size: 14))
-                        .strikethrough(isPast, color: .gray)
+                        .strikethrough(isPast, color: theme.color.textSecondary)
                         .frame(width: 32, height: 32)
                         .background(backgroundFor(date: date, isPast: isPast))
                         .foregroundColor(textColorFor(date: date, isCurrentMonth: isCurrentMonth, isPast: isPast))
@@ -635,22 +653,22 @@ struct DragSelectCalendarView: View {
     
     private func backgroundFor(date: Date, isPast: Bool) -> Color {
         if !isPast && isDateSelected(date) {
-            return Color.blue
+            return theme.color.accent
         }
         return Color.clear
     }
-    
+
     private func textColorFor(date: Date, isCurrentMonth: Bool, isPast: Bool) -> Color {
         if isPast {
-            return .gray.opacity(0.5)
+            return theme.color.textSecondary.opacity(0.5)
         }
         if !isCurrentMonth {
-            return .gray.opacity(0.3)
+            return theme.color.textSecondary.opacity(0.4)
         }
         if isDateSelected(date) {
-            return .white
+            return theme.color.textOnAccent
         }
-        return Color(white: 0.2)
+        return theme.color.textPrimary
     }
 }
 
@@ -662,6 +680,7 @@ struct DateRectKey: PreferenceKey {
 }
 
 struct PostCardBanner: View {
+    @Environment(\.theme) private var theme
     let post: Post
     var isDetail: Bool = false
     var onClose: (() -> Void)? = nil
@@ -714,22 +733,24 @@ struct PostCardBanner: View {
                     Button(action: toggleSave) {
                         Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
                             .font(.system(size: 22))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(isSaved ? theme.color.accent : theme.color.textSecondary)
                     }
-                    
+                    .accessibilityLabel(isSaved ? "הסר שמירה" : "שמור מודעה")
+
                     ShareLink(item: "בדוק את המודעה הזו ב-דוגסיטר!\nמאת \(post.ownerName)\nב-\(post.address)") {
                         Image(systemName: "square.and.arrow.up")
                             .font(.system(size: 22))
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(theme.color.textSecondary)
                     }
-                    
+
                     if isDetail {
                         Button(action: { onClose?() }) {
                             Circle()
-                                .fill(Color(.secondarySystemGroupedBackground))
+                                .fill(theme.color.surfaceSecondary)
                                 .frame(width: 30, height: 30)
-                                .overlay(Image(systemName: "xmark").foregroundColor(.secondary).font(.system(size: 14, weight: .bold)))
+                                .overlay(Image(systemName: "xmark").foregroundStyle(theme.color.textSecondary).font(.system(size: 14, weight: .bold)))
                         }
+                        .accessibilityLabel("סגור")
                     }
                 }
                 
@@ -745,31 +766,27 @@ struct PostCardBanner: View {
                         Text(firstName)
                             .bold()
                             .font(.system(size: 17))
-                            .foregroundColor(.primary)
+                            .foregroundStyle(theme.color.textPrimary)
                             .multilineTextAlignment(.trailing)
-                        
+
                         if !lastName.isEmpty {
                             Text(lastName)
                                 .bold()
                                 .font(.system(size: 17))
-                                .foregroundColor(.primary)
+                                .foregroundStyle(theme.color.textPrimary)
                                 .multilineTextAlignment(.trailing)
+                                .lineLimit(1)
                         }
                     }
-                    
+
                     if let photo = post.ownerPhotoURL, photo.hasPrefix("http") {
-                        AsyncImage(url: URL(string: photo)) { image in
-                            image.resizable()
-                                .aspectRatio(contentMode: .fill)
-                        } placeholder: {
-                            Circle().fill(Color.gray.opacity(0.3))
-                                .overlay(Image(systemName: "person.fill").foregroundColor(.gray))
+                        CachedAsyncImage(photo, contentMode: .fill, targetSize: 104) {
+                            ownerPhotoPlaceholder
                         }
                         .frame(width: 52, height: 52)
                         .clipShape(Circle())
                     } else {
-                        Circle().fill(Color.gray.opacity(0.3))
-                            .overlay(Image(systemName: "person.fill").foregroundColor(.gray))
+                        ownerPhotoPlaceholder
                             .frame(width: 52, height: 52)
                     }
                 }
@@ -777,34 +794,34 @@ struct PostCardBanner: View {
             
             // DIVIDER
             Rectangle()
-                .fill(Color(.separator))
+                .fill(theme.color.separator)
                 .frame(height: 1)
                 .padding(.vertical, 10)
-            
+
             // SECOND ROW (all content right-aligned)
             VStack(alignment: .trailing, spacing: 8) {
                 Text(post.address.components(separatedBy: ",").first ?? post.address)
                     .font(.system(size: 14))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(theme.color.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .trailing)
-                
+
                 Text("חיות: \(post.petIds.count)")
                     .font(.system(size: 14))
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(theme.color.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .trailing)
-                
+
                 Text(dateString)
                     .font(.system(size: 16))
-                    .foregroundColor(.secondary) // Match the dark gray address color
+                    .foregroundStyle(theme.color.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .trailing)
-                
+
                 // PRICE BUBBLE - Push to RIGHT with Spacer
                 HStack {
                     Spacer()
                     let interval = post.payPer == "day" ? "ללילה" : "לשעה"
                     let daysCount = max(1, post.endDate.dateValue().timeIntervalSince(post.startDate.dateValue()) / (60 * 60 * 24))
                     let total = post.payAmount * (post.payPer == "day" ? daysCount : 1)
-                    
+
                     HStack(spacing: 8) {
                         Text("סה״כ ₪\(Int(total))")
                         Image(systemName: "arrow.left")
@@ -812,30 +829,36 @@ struct PostCardBanner: View {
                         Text("₪\(Int(post.payAmount))/\(interval)")
                     }
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundStyle(theme.color.textOnAccent)
                     .padding(.vertical, 10)
                     .padding(.horizontal, 16)
-                    .background(Color(red: 74/255, green: 144/255, blue: 217/255))
-                    .cornerRadius(20)
+                    .background(theme.color.accent)
+                    .clipShape(Capsule())
                 }
             }
-            
+
             // PICKUP ROW
             if let pickup = post.pickupType {
                 HStack {
                     Text(pickup == "dropOff" ? "🏠 בעל הכלב יביא" : "🚗 המטפל יאסוף")
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(Color(red: 229/255, green: 57/255, blue: 53/255))
+                        .foregroundStyle(theme.color.error)
                     Spacer()
                 }
             }
         }
         .padding(.vertical, 14)
         .padding(.horizontal, 16)
-        .background(isDetail ? Color(.systemBackground) : Color(.systemGroupedBackground))
-        .cornerRadius(16)
+        .background(isDetail ? theme.color.surface : theme.color.surfaceSecondary)
+        .clipShape(RoundedRectangle(cornerRadius: theme.radius.card, style: .continuous))
         .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
         .environment(\.layoutDirection, .leftToRight)
+    }
+
+    private var ownerPhotoPlaceholder: some View {
+        Circle()
+            .fill(theme.color.surfaceSecondary)
+            .overlay(Image(systemName: "person.fill").foregroundStyle(theme.color.textSecondary))
     }
 }
 
@@ -844,21 +867,15 @@ enum BehaviorStatus {
 }
 
 struct BehaviorPill: View {
+    @Environment(\.theme) private var theme
     let title: String
     let status: BehaviorStatus
-    
-    var bgColor: Color {
+
+    var tint: Color {
         switch status {
-        case .positive: return Color(red: 232/255, green: 245/255, blue: 233/255)
-        case .negative: return Color(red: 255/255, green: 235/255, blue: 238/255)
-        case .neutral: return Color(red: 255/255, green: 243/255, blue: 224/255)
-        }
-    }
-    var textColor: Color {
-        switch status {
-        case .positive: return Color(red: 46/255, green: 125/255, blue: 50/255)
-        case .negative: return Color(red: 198/255, green: 40/255, blue: 40/255)
-        case .neutral: return Color(red: 230/255, green: 81/255, blue: 0/255)
+        case .positive: return theme.color.success
+        case .negative: return theme.color.error
+        case .neutral:  return theme.color.warning
         }
     }
     var icon: String {
@@ -868,18 +885,18 @@ struct BehaviorPill: View {
         case .neutral: return "~"
         }
     }
-    
+
     var body: some View {
         HStack(spacing: 4) {
             Text(icon).font(.system(size: 10, weight: .bold))
             Text(title)
         }
         .font(.system(size: 12, weight: .medium, design: .rounded))
-        .foregroundColor(textColor)
+        .foregroundStyle(tint)
         .padding(.vertical, 4)
         .padding(.horizontal, 8)
-        .background(bgColor)
-        .cornerRadius(10)
+        .background(tint.opacity(0.15))
+        .clipShape(RoundedRectangle(cornerRadius: theme.radius.sm, style: .continuous))
     }
 }
 
@@ -890,54 +907,50 @@ func getBehaviorStatus(for text: String) -> BehaviorStatus {
 }
 
 struct DogCardView: View {
+    @Environment(\.theme) private var theme
     let pet: Pet
     let post: Post
-    
+
     var body: some View {
         VStack(spacing: 12) {
             // TOP ROW
             HStack(alignment: .top) {
                 // FAR RIGHT
-                Group {
-                    if let photoStr = pet.mainPhotoURL, !photoStr.isEmpty, let url = URL(string: photoStr) {
-                        AsyncImage(url: url) { phase in
-                            if let image = phase.image {
-                                image.resizable().scaledToFill()
-                            } else if phase.error != nil {
-                                Image(systemName: "pawprint.fill").foregroundColor(.gray)
-                            } else {
-                                LottieProgressView(size: 60)
-                            }
-                        }
-                    } else {
-                        Image(systemName: "pawprint.fill").foregroundColor(.gray)
+                CachedAsyncImage(
+                    (pet.mainPhotoURL?.isEmpty == false ? pet.mainPhotoURL : nil),
+                    contentMode: .fill,
+                    targetSize: 104
+                ) {
+                    ZStack {
+                        theme.color.surfaceSecondary
+                        Image(systemName: "pawprint.fill").foregroundStyle(theme.color.textSecondary)
                     }
                 }
                 .frame(width: 52, height: 52)
-                .background(Color(.systemGroupedBackground))
+                .background(theme.color.surfaceSecondary)
                 .clipShape(Circle())
-                
+
                 // LEFT OF PHOTO
                 VStack(alignment: .trailing, spacing: 4) {
                     Text("\(pet.ageYears) שנים - \(pet.name)")
                         .font(.system(size: 17, weight: .bold))
-                        .foregroundColor(Color(white: 0.1))
-                    
+                        .foregroundStyle(theme.color.textPrimary)
+
                     Text(pet.sex)
                         .font(.system(size: 14))
-                        .foregroundColor(Color(white: 0.4))
+                        .foregroundStyle(theme.color.textSecondary)
                 }
-                
+
                 Spacer()
             }
-            
+
             // BEHAVIOR ROW
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     BehaviorPill(title: "תרופות", status: post.medication ? .negative : .positive)
                     BehaviorPill(title: "נחמד לילדים", status: getBehaviorStatus(for: pet.friendlyWithChildren))
                     BehaviorPill(title: "נחמד לכלבים", status: getBehaviorStatus(for: pet.friendlyWithDogs))
-                    
+
                     if !pet.friendlyWithCats.isEmpty && pet.friendlyWithCats != "לא רלוונטי" {
                         BehaviorPill(title: "נחמד לחתולים", status: getBehaviorStatus(for: pet.friendlyWithCats))
                     }
@@ -945,8 +958,8 @@ struct DogCardView: View {
             }
         }
         .padding(16)
-        .background(Color(.systemBackground))
-        .cornerRadius(16)
+        .background(theme.color.surface)
+        .clipShape(RoundedRectangle(cornerRadius: theme.radius.card, style: .continuous))
         .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
         .environment(\.layoutDirection, .rightToLeft)
     }
@@ -954,9 +967,10 @@ struct DogCardView: View {
 
 struct PostDetailSheetView: View {
     @EnvironmentObject var appState: AppState
+    @Environment(\.theme) private var theme
     let post: Post
     var onClose: () -> Void
-    
+
     @State private var isSubmitting = false
     @State private var loadedPets: [Pet] = []
     @State private var selectedPet: Pet? = nil
@@ -966,9 +980,9 @@ struct PostDetailSheetView: View {
             VStack(spacing: 0) {
                 // FIXED TOP BANNER
                 PostCardBanner(post: post, isDetail: true, onClose: onClose)
-                    .background(Color(.systemBackground).shadow(color: .black.opacity(0.05), radius: 5, y: 5))
+                    .background(theme.color.surface.shadow(color: .black.opacity(0.05), radius: 5, y: 5))
                     .zIndex(1)
-                
+
                 // SCROLLABLE CONTENT
                 ScrollView {
                     VStack(spacing: 12) {
@@ -977,15 +991,15 @@ struct PostDetailSheetView: View {
                             VStack {
                                 Text(desc)
                                     .font(.system(size: 15))
-                                    .foregroundColor(Color(white: 0.33))
+                                    .foregroundStyle(theme.color.textSecondary)
                                     .padding(16)
                                     .frame(maxWidth: .infinity, alignment: .trailing)
-                                    .background(Color(.secondarySystemGroupedBackground))
-                                    .cornerRadius(12)
+                                    .background(theme.color.surfaceSecondary)
+                                    .clipShape(RoundedRectangle(cornerRadius: theme.radius.md, style: .continuous))
                             }
                             .padding(16)
-                            .background(Color(.systemBackground))
-                            .cornerRadius(16)
+                            .background(theme.color.surface)
+                            .clipShape(RoundedRectangle(cornerRadius: theme.radius.card, style: .continuous))
                             .shadow(color: .black.opacity(0.05), radius: 5, y: 2)
                             .padding(.horizontal, 16)
                             .padding(.top, 16)
@@ -1006,8 +1020,8 @@ struct PostDetailSheetView: View {
                     }
                     .environment(\.layoutDirection, .rightToLeft)
                 }
-                .background(Color(.secondarySystemGroupedBackground))
-                
+                .background(theme.color.background)
+
                 // FIXED BOTTOM BUTTON
                 Button(action: {
                     Task {
@@ -1024,15 +1038,15 @@ struct PostDetailSheetView: View {
                     }
                 }
                 .font(.system(size: 18, weight: .bold))
-                .foregroundColor(.white)
+                .foregroundStyle(theme.color.textOnAccent)
                 .frame(maxWidth: .infinity)
                 .frame(height: 54)
-                .background(Color(red: 74/255, green: 144/255, blue: 217/255))
-                .cornerRadius(14)
+                .background(LinearGradient(colors: theme.color.accentGradient, startPoint: .leading, endPoint: .trailing))
+                .clipShape(RoundedRectangle(cornerRadius: theme.radius.md, style: .continuous))
                 .padding(.horizontal, 16)
                 .padding(.bottom, geometry.safeAreaInsets.bottom + 83 + 16)
                 .padding(.top, 16)
-                .background(Color(.secondarySystemGroupedBackground))
+                .background(theme.color.background)
             }
         }
         .task {
@@ -1048,13 +1062,22 @@ struct PetDetailOverlayView: View {
     let pet: Pet
     let post: Post
     @Environment(\.presentationMode) var presentationMode
+    @Environment(\.theme) private var theme
     @State private var selectedImageURL: String? = nil
-    
+
     var ageString: String {
         if pet.ageMonths > 0 {
             return "\(pet.ageYears) שנים ו-\(pet.ageMonths) חודשים"
         }
         return "\(pet.ageYears) שנים"
+    }
+
+    private func friendlyTint(_ value: String) -> Color {
+        switch getBehaviorStatus(for: value) {
+        case .positive: return theme.color.success
+        case .neutral:  return theme.color.warning
+        case .negative: return theme.color.error
+        }
     }
     
     var body: some View {
@@ -1064,17 +1087,18 @@ struct PetDetailOverlayView: View {
                     Button(action: { presentationMode.wrappedValue.dismiss() }) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.title)
-                            .foregroundColor(Color(.systemGray3))
+                            .foregroundStyle(theme.color.textSecondary)
                     }
+                    .accessibilityLabel("סגור")
                     Spacer()
                     Text(pet.name)
-                        .font(.headline)
-                        .foregroundColor(.primary)
+                        .font(theme.typography.headline)
+                        .foregroundStyle(theme.color.textPrimary)
                     Spacer()
                     Image(systemName: "xmark.circle.fill").opacity(0)
                 }
                 .padding()
-                .background(Color(.systemBackground))
+                .background(theme.color.surface)
                 .environment(\.layoutDirection, .leftToRight) // Force X on left
                 
                 ScrollView {
@@ -1083,19 +1107,15 @@ struct PetDetailOverlayView: View {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 HStack(spacing: 12) {
                                     ForEach(urls, id: \.self) { urlString in
-                                        if let url = URL(string: urlString) {
-                                            AsyncImage(url: url) { phase in
-                                                if let image = phase.image {
-                                                    image.resizable().aspectRatio(contentMode: .fill)
-                                                }
-                                            }
-                                            .frame(width: 250, height: 250)
-                                            .cornerRadius(16)
-                                            .clipped()
-                                            .onTapGesture {
-                                                withAnimation(.easeInOut(duration: 0.2)) {
-                                                    selectedImageURL = urlString
-                                                }
+                                        CachedAsyncImage(urlString, contentMode: .fill, targetSize: 500) {
+                                            theme.color.surfaceSecondary
+                                        }
+                                        .frame(width: 250, height: 250)
+                                        .clipShape(RoundedRectangle(cornerRadius: theme.radius.card, style: .continuous))
+                                        .clipped()
+                                        .onTapGesture {
+                                            withAnimation(.easeInOut(duration: 0.2)) {
+                                                selectedImageURL = urlString
                                             }
                                         }
                                     }
@@ -1110,61 +1130,61 @@ struct PetDetailOverlayView: View {
                             // 2. Additional Info
                             if !pet.additionalInfo.isEmpty {
                                 Text(pet.additionalInfo)
-                                    .foregroundColor(.primary)
+                                    .foregroundStyle(theme.color.textPrimary)
                                     .padding(16)
                                     .frame(maxWidth: .infinity, alignment: .leading)
-                                    .background(Color(.secondarySystemGroupedBackground))
-                                    .cornerRadius(16)
+                                    .background(theme.color.surface)
+                                    .clipShape(RoundedRectangle(cornerRadius: theme.radius.card, style: .continuous))
                             }
-                            
+
                             // 3. Behavior section
-                            Text("התנהגות").font(.headline.bold()).padding(.top, 8).foregroundColor(.primary)
+                            Text("התנהגות").font(theme.typography.headline).padding(.top, 8).foregroundStyle(theme.color.textPrimary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
                                     Text("ידידותי לילדים")
                                         .foregroundColor(.primary)
                                     Text(pet.friendlyWithChildren)
-                                        .font(.caption.bold())
-                                        .foregroundColor(.primary)
+                                        .font(theme.typography.captionBold)
+                                        .foregroundStyle(friendlyTint(pet.friendlyWithChildren))
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 4)
-                                        .background(pet.friendlyWithChildren == "כן מאוד" ? Color.green.opacity(0.2) : (pet.friendlyWithChildren == "לפעמים" ? Color.orange.opacity(0.2) : Color.red.opacity(0.2)))
-                                        .cornerRadius(8)
+                                        .background(friendlyTint(pet.friendlyWithChildren).opacity(0.18))
+                                        .clipShape(RoundedRectangle(cornerRadius: theme.radius.xs, style: .continuous))
                                     Spacer()
                                 }.frame(maxWidth: .infinity, alignment: .leading)
                                 HStack {
                                     Text("ידידותי לכלבים")
                                         .foregroundColor(.primary)
                                     Text(pet.friendlyWithDogs)
-                                        .font(.caption.bold())
-                                        .foregroundColor(.primary)
+                                        .font(theme.typography.captionBold)
+                                        .foregroundStyle(friendlyTint(pet.friendlyWithDogs))
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 4)
-                                        .background(pet.friendlyWithDogs == "כן מאוד" ? Color.green.opacity(0.2) : (pet.friendlyWithDogs == "לפעמים" ? Color.orange.opacity(0.2) : Color.red.opacity(0.2)))
-                                        .cornerRadius(8)
+                                        .background(friendlyTint(pet.friendlyWithDogs).opacity(0.18))
+                                        .clipShape(RoundedRectangle(cornerRadius: theme.radius.xs, style: .continuous))
                                     Spacer()
                                 }.frame(maxWidth: .infinity, alignment: .leading)
                                 HStack {
                                     Text("ידידותי לחתולים")
                                         .foregroundColor(.primary)
                                     Text(pet.friendlyWithCats)
-                                        .font(.caption.bold())
-                                        .foregroundColor(.primary)
+                                        .font(theme.typography.captionBold)
+                                        .foregroundStyle(friendlyTint(pet.friendlyWithCats))
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 4)
-                                        .background(pet.friendlyWithCats == "כן מאוד" ? Color.green.opacity(0.2) : (pet.friendlyWithCats == "לפעמים" ? Color.orange.opacity(0.2) : Color.red.opacity(0.2)))
-                                        .cornerRadius(8)
+                                        .background(friendlyTint(pet.friendlyWithCats).opacity(0.18))
+                                        .clipShape(RoundedRectangle(cornerRadius: theme.radius.xs, style: .continuous))
                                     Spacer()
                                 }.frame(maxWidth: .infinity, alignment: .leading)
                             }
                             .padding()
-                            .background(Color(.secondarySystemGroupedBackground))
-                            .cornerRadius(16)
+                            .background(theme.color.surface)
+                            .clipShape(RoundedRectangle(cornerRadius: theme.radius.card, style: .continuous))
                             .shadow(color: .black.opacity(0.05), radius: 5)
                             
                             // 4. Medical section (LAST)
-                            Text("מידע רפואי").font(.headline.bold()).padding(.top, 8).foregroundColor(.primary)
+                            Text("מידע רפואי").font(theme.typography.headline).padding(.top, 8).foregroundStyle(theme.color.textPrimary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             VStack(alignment: .leading, spacing: 8) {
                                 HStack {
@@ -1198,8 +1218,8 @@ struct PetDetailOverlayView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             }
                             .padding()
-                            .background(Color(.secondarySystemGroupedBackground))
-                            .cornerRadius(16)
+                            .background(theme.color.surface)
+                            .clipShape(RoundedRectangle(cornerRadius: theme.radius.card, style: .continuous))
                             .shadow(color: .black.opacity(0.05), radius: 5)
                         }
                         .padding(.horizontal)
@@ -1207,11 +1227,11 @@ struct PetDetailOverlayView: View {
                     }
                     .padding(.vertical)
                 }
-                .background(Color(.systemGroupedBackground).edgesIgnoringSafeArea(.all))
+                .background(theme.color.background.edgesIgnoringSafeArea(.all))
             }
-            
+
             // LIGHTBOX OVERLAY
-            if let imageURL = selectedImageURL, let url = URL(string: imageURL) {
+            if let imageURL = selectedImageURL {
                 ZStack {
                     Color.black.opacity(0.85)
                         .ignoresSafeArea()
@@ -1238,16 +1258,11 @@ struct PetDetailOverlayView: View {
                         
                         Spacer()
                         
-                        AsyncImage(url: url) { phase in
-                            if let image = phase.image {
-                                image.resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .frame(maxWidth: .infinity)
-                            } else {
-                                LottieProgressView(size: 36)
-                            }
+                        CachedAsyncImage(imageURL, contentMode: .fit, targetSize: 1000) {
+                            LottieProgressView(size: 36)
                         }
-                        
+                        .frame(maxWidth: .infinity)
+
                         Spacer()
                     }
                 }

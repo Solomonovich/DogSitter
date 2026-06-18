@@ -7,7 +7,8 @@ struct MapContainerView: UIViewRepresentable {
     var route: [CLLocationCoordinate2D] = []
     var isFollowingUser: Bool = false
     var selectedAnnotationID: String?
-    
+    var accentColor: Color = Color(hex: "#4A90D9")
+
     // Binding for user clicking a pin
     var onAnnotationTapped: ((MKPointAnnotation) -> Void)?
     var onMapTapped: (() -> Void)?
@@ -24,34 +25,37 @@ struct MapContainerView: UIViewRepresentable {
                 return MKTileOverlayRenderer(tileOverlay: tileOverlay)
             } else if let polyline = overlay as? MKPolyline {
                 let renderer = MKPolylineRenderer(polyline: polyline)
-                renderer.strokeColor = .systemBlue
+                renderer.strokeColor = UIColor(parent.accentColor)
                 renderer.lineWidth = 4
                 return renderer
             }
             return MKOverlayRenderer(overlay: overlay)
         }
-        
+
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
             guard let pointAnn = annotation as? MKPointAnnotation else { return nil }
             let identifier = "PostPin"
-            var view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
-            if view == nil {
-                view = MKAnnotationView(annotation: annotation, reuseIdentifier: identifier)
-                view?.canShowCallout = false
+            let view: MKAnnotationView
+            if let reused = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) {
+                reused.annotation = annotation
+                view = reused
             } else {
-                view?.annotation = annotation
+                let created = MKAnnotationView(annotation: annotation, reuseIdentifier: identifier)
+                created.canShowCallout = false
+                view = created
             }
-            
+
             let isSelected = pointAnn.subtitle == parent.selectedAnnotationID
-            updateAnnotationView(view!, for: pointAnn, isSelected: isSelected)
-            view!.transform = isSelected ? CGAffineTransform(scaleX: 1.2, y: 1.2) : .identity
+            updateAnnotationView(view, for: pointAnn, isSelected: isSelected)
+            view.transform = isSelected ? CGAffineTransform(scaleX: 1.2, y: 1.2) : .identity
             return view
         }
-        
+
         func updateAnnotationView(_ view: MKAnnotationView, for annotation: MKPointAnnotation, isSelected: Bool) {
             let size: CGFloat = isSelected ? 44 : 36
-            let bgColor = isSelected ? UIColor(red: 74/255, green: 144/255, blue: 217/255, alpha: 1.0) : .white
-            let iconColor = isSelected ? .white : UIColor(red: 74/255, green: 144/255, blue: 217/255, alpha: 1.0)
+            let accentUIColor = UIColor(parent.accentColor)
+            let bgColor: UIColor = isSelected ? accentUIColor : .white
+            let iconColor: UIColor = isSelected ? .white : accentUIColor
             
             let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
             let image = renderer.image { ctx in
