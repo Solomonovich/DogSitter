@@ -86,8 +86,31 @@ struct BrowsePostsView: View {
 
     private func recomputePosts() {
         let result = computeSortedPosts()
-        sortedPosts = result
-        mapAnnotations = computeAnnotations(result)
+        // Apply without implicit animation so the carousel doesn't visibly reshuffle
+        // when geocoding finishes or posts stream in (fixes the on-appear stutter).
+        // User-driven sheet/paging animations stay intact.
+        var tx = Transaction()
+        tx.disablesAnimations = true
+        withTransaction(tx) {
+            sortedPosts = result
+            mapAnnotations = computeAnnotations(result)
+        }
+    }
+
+    /// Pull-to-refresh: re-geocode the sitter's address and re-sort the posts.
+    @MainActor
+    private func refresh() async {
+        if let address = appState.currentUser?.address {
+            let geocoder = CLGeocoder()
+            if let placemarks = try? await geocoder.geocodeAddressString(address),
+               let loc = placemarks.first?.location {
+                sitterLocation = loc.coordinate
+                mapCenter = loc.coordinate
+            }
+        }
+        // Keep the refresh indicator visible briefly even when geocoding is cached.
+        try? await Task.sleep(nanoseconds: 350_000_000)
+        recomputePosts()
     }
     
     var currentSelectedPostID: String? {
@@ -138,41 +161,45 @@ struct BrowsePostsView: View {
                 
                 VStack(spacing: 0) {
                     if !isShowingPostDetail {
-                        VStack {
-                            Capsule()
-                                .fill(theme.color.separator)
-                                .frame(width: 40, height: 5)
-                                .padding(.top, 8)
-                                .padding(.bottom, 10)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .contentShape(Rectangle())
-                        .gesture(
-                            DragGesture(coordinateSpace: .global)
-                                .onChanged { value in
-                                    if dragStartHeight == 0 { dragStartHeight = sheetHeight }
-                                    sheetHeight = max(collapsedHeight, min(expandedHeight, dragStartHeight - value.translation.height))
+                        Capsule()
+                            .fill(theme.color.separator)
+                            .frame(width: 44, height: 5)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 10)
+                            .padding(.bottom, 14)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                // Tap the grab handle to pull the sheet up / push it down.
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                    sheetHeight = sheetHeight <= collapsedHeight + 50 ? expandedHeight : collapsedHeight
                                 }
-                                .onEnded { value in
-                                    dragStartHeight = 0
-                                    let velocity = -value.velocity.height
-                                    let midpoint = (collapsedHeight + expandedHeight) / 2
-                                    
-                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                                        if velocity > 300 || sheetHeight > midpoint {
-                                            sheetHeight = expandedHeight
-                                        } else if velocity < -300 || sheetHeight < midpoint {
-                                            sheetHeight = collapsedHeight
-                                        } else {
-                                            if sheetHeight > midpoint {
+                            }
+                            .gesture(
+                                DragGesture(coordinateSpace: .global)
+                                    .onChanged { value in
+                                        if dragStartHeight == 0 { dragStartHeight = sheetHeight }
+                                        sheetHeight = max(collapsedHeight, min(expandedHeight, dragStartHeight - value.translation.height))
+                                    }
+                                    .onEnded { value in
+                                        dragStartHeight = 0
+                                        let velocity = -value.velocity.height
+                                        let midpoint = (collapsedHeight + expandedHeight) / 2
+
+                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                            if velocity > 300 || sheetHeight > midpoint {
                                                 sheetHeight = expandedHeight
-                                            } else {
+                                            } else if velocity < -300 || sheetHeight < midpoint {
                                                 sheetHeight = collapsedHeight
+                                            } else {
+                                                if sheetHeight > midpoint {
+                                                    sheetHeight = expandedHeight
+                                                } else {
+                                                    sheetHeight = collapsedHeight
+                                                }
                                             }
                                         }
                                     }
-                                }
-                        )
+                            )
                         
                         if sheetHeight <= collapsedHeight + 50 {
                             if !sortedPosts.isEmpty {
@@ -215,6 +242,9 @@ struct BrowsePostsView: View {
                                     }
                                 }
                                 .padding(.bottom, 83)
+                            }
+                            .refreshable {
+                                await refresh()
                             }
                         }
                     } else if let post = selectedPost {
