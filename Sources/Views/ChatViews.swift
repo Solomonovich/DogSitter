@@ -798,7 +798,10 @@ struct ChatUserProfileView: View {
     
     @State private var showingLightbox = false
     @State private var selectedPhotoURL: String?
-    
+
+    // F-22: report / block feedback
+    @State private var moderationMessage: String?
+
     var body: some View {
         NavigationView {
             ZStack {
@@ -952,6 +955,33 @@ struct ChatUserProfileView: View {
                 ToolbarItem(placement: .principal) {
                     Text(user?.name ?? "").font(.headline)
                 }
+                // F-22: report / block the other user.
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Menu {
+                        Button {
+                            Task {
+                                await appState.reportUser(otherUserId)
+                                moderationMessage = "הדיווח נשלח. תודה."
+                            }
+                        } label: { Label("דווח על משתמש", systemImage: "flag") }
+                        Button(role: .destructive) {
+                            Task {
+                                await appState.blockUser(otherUserId)
+                                moderationMessage = "המשתמש נחסם."
+                            }
+                        } label: { Label("חסום משתמש", systemImage: "hand.raised") }
+                    } label: {
+                        Image(systemName: "ellipsis.circle").foregroundColor(.primary)
+                    }
+                }
+            }
+            .alert("בוצע", isPresented: Binding(
+                get: { moderationMessage != nil },
+                set: { if !$0 { moderationMessage = nil } }
+            )) {
+                Button("סגור", role: .cancel) { moderationMessage = nil }
+            } message: {
+                Text(moderationMessage ?? "")
             }
             .onAppear {
                 loadInitialPhotos()

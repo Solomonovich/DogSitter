@@ -116,6 +116,49 @@ class AppState: ObservableObject {
             dbg("Resend verification email failed: \(error)")
         }
     }
+
+    // MARK: - Abuse Controls (F-22)
+
+    /// File a moderation report against another user.
+    func reportUser(_ otherUserId: String, reason: String = "") async {
+        guard let uid = currentUser?.id else { return }
+        let data: [String: Any] = [
+            "reporterId": uid,
+            "reportedId": otherUserId,
+            "reason": reason,
+            "createdAt": FieldValue.serverTimestamp()
+        ]
+        do { _ = try await db.collection("reports").addDocument(data: data) }
+        catch { dbg("Report failed: \(error)") }
+    }
+
+    /// Block another user (recorded under the current user's own subcollection).
+    func blockUser(_ otherUserId: String) async {
+        guard let uid = currentUser?.id else { return }
+        do {
+            try await db.collection("users").document(uid)
+                .collection("blocked").document(otherUserId)
+                .setData(["createdAt": FieldValue.serverTimestamp()])
+        } catch { dbg("Block failed: \(error)") }
+    }
+
+    // MARK: - Account Deletion (F-27)
+
+    /// Deletes the signed-in account. Returns nil on success, or a user-facing
+    /// message. If Firebase requires a recent login, the user is asked to re-auth.
+    /// Firestore user-document cleanup is handled server-side by a Cloud Function.
+    func deleteAccount() async -> String? {
+        guard let user = Auth.auth().currentUser else { return "אינך מחובר." }
+        do {
+            try await user.delete()
+            return nil // auth state listener resets local state
+        } catch let error as NSError {
+            if error.code == AuthErrorCode.requiresRecentLogin.rawValue {
+                return "מטעמי אבטחה יש להתחבר מחדש ואז למחוק את החשבון."
+            }
+            return "מחיקת החשבון נכשלה. אנא נסה שוב."
+        }
+    }
     
     // MARK: - Core Profile & Booting
     

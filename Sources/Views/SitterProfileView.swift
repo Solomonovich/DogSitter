@@ -7,6 +7,8 @@ import SecurityKit
 struct ProfileView: View {
     @EnvironmentObject var appState: AppState
     @Environment(\.theme) private var theme
+    @State private var showDeleteConfirm = false
+    @State private var deleteErrorMessage: String?
 
     var body: some View {
         NavigationView {
@@ -59,6 +61,15 @@ struct ProfileView: View {
                     .padding()
                     .background(theme.color.surfaceSecondary)
                     .clipShape(RoundedRectangle(cornerRadius: theme.radius.md, style: .continuous))
+
+                    // F-27: account deletion (required for App Store compliance).
+                    Button(role: .destructive) { showDeleteConfirm = true } label: {
+                        Text("מחק חשבון")
+                            .font(theme.typography.subheadline)
+                            .foregroundStyle(theme.color.error)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
+                    .padding(.top, 4)
                 }
                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                 .listRowBackground(Color.clear)
@@ -67,6 +78,22 @@ struct ProfileView: View {
             .scrollContentBackground(.hidden)
             .background(theme.color.background.edgesIgnoringSafeArea(.all))
             .navigationTitle("הפרופיל שלי")
+            .alert("מחיקת חשבון", isPresented: $showDeleteConfirm) {
+                Button("מחק", role: .destructive) {
+                    Task { if let msg = await appState.deleteAccount() { deleteErrorMessage = msg } }
+                }
+                Button("ביטול", role: .cancel) {}
+            } message: {
+                Text("פעולה זו תמחק את חשבונך לצמיתות ולא ניתן לבטלה.")
+            }
+            .alert("שגיאה", isPresented: Binding(
+                get: { deleteErrorMessage != nil },
+                set: { if !$0 { deleteErrorMessage = nil } }
+            )) {
+                Button("סגור", role: .cancel) { deleteErrorMessage = nil }
+            } message: {
+                Text(deleteErrorMessage ?? "")
+            }
         }
     }
 
