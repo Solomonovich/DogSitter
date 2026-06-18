@@ -131,7 +131,7 @@ struct SocialRoleSelectionView: View {
             DispatchQueue.main.async {
                 self.isLoading = false
                 if let err = err {
-                    self.errorMessage = "שגיאה ביצירת פרופיל: \(err.localizedDescription)"
+                    self.errorMessage = "שגיאה ביצירת פרופיל. אנא נסה שוב."
                     return
                 }
                 // Escalate role securely inside AppState driving navigation natively

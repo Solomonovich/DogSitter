@@ -42,7 +42,7 @@ final class ProfileFieldsTests: XCTestCase {
             name: "Owen", username: "@owen", address: "Haifa", phone: "050", isSitter: false
         )
         XCTAssertNil(payload["phone"], "phone is sitter-only")
-        XCTAssertEqual(payload["name"], "Owen")
+        XCTAssertEqual(payload["name"] as? String, "Owen")
     }
 }
 

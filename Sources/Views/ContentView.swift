@@ -158,7 +158,7 @@ struct ContactDetailsOnboardingView: View {
                 }
             } catch {
                 await MainActor.run {
-                    errorMessage = "שגיאה בשמירת הנתונים: \(error.localizedDescription)"
+                    errorMessage = "שגיאה בשמירת הנתונים. אנא נסה שוב."
                     isLoading = false
                 }
             }

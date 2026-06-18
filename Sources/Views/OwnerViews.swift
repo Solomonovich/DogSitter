@@ -530,7 +530,7 @@ struct AddPetView: View {
                 }
             } catch {
                 await MainActor.run {
-                    self.errorMessage = "שגיאה בשמירת פרטי הכלב: \(error.localizedDescription)"
+                    self.errorMessage = "שגיאה בשמירת פרטי הכלב. אנא נסה שוב."
                     self.isUploading = false
                 }
             }

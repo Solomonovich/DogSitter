@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import ImageIO
+import SecurityKit
 
 /// Process-wide in-memory image cache, keyed by URL + target size.
 enum AppImageCache {
@@ -18,7 +19,12 @@ final class CachedImageLoader: ObservableObject {
     private var loadedKey: String?
 
     func load(_ urlString: String?, maxPixel: CGFloat) {
-        guard let urlString, !urlString.isEmpty, let url = URL(string: urlString) else {
+        // F-21: only load images from trusted hosts. Message photoURLs are
+        // client-controlled, so an untrusted host could be used as an IP-tracking
+        // beacon. All legitimate images are served from Cloudinary; anything else
+        // falls through to the themed placeholder.
+        guard let urlString, !urlString.isEmpty, let url = URL(string: urlString),
+              ImageHostPolicy.isAllowed(urlString) else {
             image = nil
             return
         }
