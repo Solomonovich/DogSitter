@@ -191,7 +191,9 @@ struct OwnerCreatePostView: View {
     
     func publishPost() {
         guard let currentUser = appState.currentUser, let uid = currentUser.id else { return }
-        
+        // F-18: require a verified email to publish (matches the server-side rule).
+        guard appState.requireVerifiedEmail() else { return }
+
         errorMessage = nil
         successMessage = nil
         

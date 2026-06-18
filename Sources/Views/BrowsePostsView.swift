@@ -1055,6 +1055,8 @@ struct PostDetailSheetView: View {
                 // FIXED BOTTOM BUTTON
                 Button(action: {
                     Task {
+                        // F-18: require a verified email to express interest.
+                        guard appState.requireVerifiedEmail() else { return }
                         isSubmitting = true
                         try? await appState.expressInterest(in: post)
                         isSubmitting = false

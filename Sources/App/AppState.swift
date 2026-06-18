@@ -18,7 +18,12 @@ class AppState: ObservableObject {
     @Published var isAuthenticated: Bool = false
     @Published var currentUserRole: UserRole = .none
     @Published var currentUser: User? = nil
-    
+
+    // F-18: email-verification state. Defaults true so verified accounts and
+    // Google/Apple logins (which carry a verified email) are never gated.
+    @Published var isEmailVerified: Bool = true
+    @Published var showEmailVerificationPrompt: Bool = false
+
     // UI Notification Wrapper
     @Published var activeError: String? = nil
     @Published var isLoadingTarget: Bool = false
@@ -49,6 +54,7 @@ class AppState: ObservableObject {
             Task { @MainActor in
                 self.isAuthenticated = (user != nil)
                 if let uid = user?.uid {
+                    self.isEmailVerified = user?.isEmailVerified ?? true
                     await self.fetchCurrentProfile(uid: uid)
                 } else {
                     self.resetState()
@@ -77,6 +83,38 @@ class AppState: ObservableObject {
         // F-23: clear the shared location tracker so a finished walk's GPS trace
         // does not linger in memory after sign-out / account switch.
         LocationTracker.shared.resetTracking()
+    }
+
+    // MARK: - Email Verification (F-18)
+
+    /// Gate for the sensitive actions (post / express interest / start walk). Returns
+    /// true if allowed; otherwise raises the verification prompt and returns false.
+    /// Mirrors the server-side `email_verified` rule so the user gets a helpful prompt
+    /// instead of a raw permission-denied.
+    func requireVerifiedEmail() -> Bool {
+        if isEmailVerified { return true }
+        showEmailVerificationPrompt = true
+        return false
+    }
+
+    /// Re-checks verification status from the server (call on launch / foreground so
+    /// the state updates after the user clicks the verification link).
+    func refreshEmailVerification() async {
+        do {
+            try await Auth.auth().currentUser?.reload()
+            self.isEmailVerified = Auth.auth().currentUser?.isEmailVerified ?? false
+        } catch {
+            dbg("Email verification refresh failed: \(error)")
+        }
+    }
+
+    /// Re-sends the verification email to the signed-in user.
+    func resendVerificationEmail() async {
+        do {
+            try await Auth.auth().currentUser?.sendEmailVerification()
+        } catch {
+            dbg("Resend verification email failed: \(error)")
+        }
     }
     
     // MARK: - Core Profile & Booting
