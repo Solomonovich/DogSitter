@@ -2,6 +2,7 @@ import FirebaseFirestore
 import SwiftUI
 import FirebaseAuth
 import GoogleSignIn
+import SecurityKit
 
 struct ProfileView: View {
     @EnvironmentObject var appState: AppState
@@ -140,21 +141,32 @@ struct EditProfileView: View {
     
     func saveProfile() {
         guard var user = appState.currentUser, let uid = user.id else { return }
-        
+
         user.name = name
         user.username = username
         user.address = address.isEmpty ? nil : address
         if user.role == "sitter" {
             user.phone = phone.isEmpty ? nil : phone
         }
-        
+
         isSaving = true
         errorMessage = nil
-        
+
         Task {
             do {
-                try appState.db.collection("users").document(uid).setData(from: user)
-                
+                // F-01: write only the allow-listed editable fields instead of a full
+                // setData(from:) overwrite, so role / email / reputation can never be
+                // mutated from the client. Same fields the edit form exposes.
+                try await appState.db.collection("users").document(uid).updateData(
+                    ProfileFields.updatePayload(
+                        name: name,
+                        username: username,
+                        address: address,
+                        phone: phone,
+                        isSitter: user.role == "sitter"
+                    )
+                )
+
                 await MainActor.run {
                     appState.currentUser = user // Update local state directly
                     isSaving = false
@@ -162,7 +174,8 @@ struct EditProfileView: View {
                 }
             } catch {
                 await MainActor.run {
-                    errorMessage = "שגיאה בשמירת הפרופיל: \(error.localizedDescription)"
+                    // F-20: do not surface the raw backend error to the user.
+                    errorMessage = "שגיאה בשמירת הפרופיל. אנא נסה שוב."
                     isSaving = false
                 }
             }

@@ -9,7 +9,8 @@ public enum ProfileFields {
         "name", "fullName", "username", "address", "phone", "photoURL", "age"
     ]
 
-    /// Returns only allow-listed keys. `phone` is included for sitters only,
+    /// Returns only allow-listed keys (typed `[String: Any]` so it drops straight
+    /// into Firestore's `updateData`). `phone` is included for sitters only,
     /// matching the existing edit form behaviour.
     public static func updatePayload(
         name: String,
@@ -17,8 +18,8 @@ public enum ProfileFields {
         address: String,
         phone: String?,
         isSitter: Bool
-    ) -> [String: String] {
-        var payload: [String: String] = [
+    ) -> [String: Any] {
+        var payload: [String: Any] = [
             "name": name,
             "username": username,
             "address": address
