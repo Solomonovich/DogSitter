@@ -1,6 +1,13 @@
 name: DogSitter
 options:
   bundleIdPrefix: com.shaqed
+# Project-wide so both the app and the WalkActivityWidget extension get matching
+# CFBundleShortVersionString / CFBundleVersion (GENERATE_INFOPLIST_FILE injects these).
+# A device install rejects an appex with an empty CFBundleVersion.
+settings:
+  base:
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
 packages:
   firebase-ios-sdk:
     url: https://github.com/firebase/firebase-ios-sdk
@@ -20,8 +27,12 @@ targets:
     deploymentTarget: "17.0"
     sources:
       - path: Sources
+        excludes:
+          - "WalkActivityWidget/**"
       - path: AppIcon.icon
     dependencies:
+      - target: WalkActivityWidget
+        embed: true
       - package: firebase-ios-sdk
         product: FirebaseAnalytics
       - package: firebase-ios-sdk
@@ -45,3 +56,20 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: "YES"
         INFOPLIST_KEY_UIRequiresFullScreen: "YES"
         SWIFT_VERSION: "5.9"
+        DEVELOPMENT_TEAM: V9M686F4S3
+  WalkActivityWidget:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Sources/WalkActivityWidget
+      - path: Sources/Shared/WalkActivityAttributes.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.shaqed.dogsitter.WalkActivityWidget
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_FILE: "Sources/WalkActivityWidget/Info.plist"
+        GENERATE_INFOPLIST_FILE: "YES"
+        SWIFT_VERSION: "5.9"
+        SKIP_INSTALL: "YES"
+        DEVELOPMENT_TEAM: V9M686F4S3

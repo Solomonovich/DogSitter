@@ -13,131 +13,20 @@ struct OwnerProfileView: View {
             ScrollView {
                 VStack(spacing: theme.spacing.lg) {
                     if let user = appState.currentUser {
-                        VStack(spacing: theme.spacing.xs) {
-                            Circle()
-                                .fill(theme.color.surfaceSecondary)
-                                .frame(width: 100, height: 100)
-                                .overlay(
-                                    Image(systemName: user.photoURL ?? "person.fill")
-                                        .resizable()
-                                        .scaledToFit()
-                                        .padding(theme.spacing.lg)
-                                        .foregroundStyle(theme.color.textSecondary)
-                                )
-                            Text(user.name)
-                                .font(theme.typography.title)
-                            Text(user.username)
-                                .font(theme.typography.subheadline)
-                                .foregroundStyle(theme.color.textSecondary)
-                            Text(user.address ?? "")
-                                .font(theme.typography.subheadline)
-
-                            NavigationLink(destination: EditProfileView()) {
-                                Text("ערוך פרופיל")
-                                    .font(theme.typography.subheadline)
-                                    .padding(.horizontal, theme.spacing.lg)
-                                    .padding(.vertical, theme.spacing.xs)
-                                    .background(theme.color.accent)
-                                    .foregroundStyle(theme.color.textOnAccent)
-                                    .clipShape(Capsule())
-                            }
-                            .padding(.top, theme.spacing.xxs)
-
-                            NavigationLink(destination: ThemePickerView()) {
-                                Label("מראה ותצוגה", systemImage: "paintbrush.fill")
-                                    .font(theme.typography.subheadline)
-                                    .foregroundStyle(theme.color.accent)
-                            }
-                            .padding(.top, theme.spacing.xxs)
-                        }
-                        .padding(.top)
-
-                        Divider().overlay(theme.color.separator)
-
-                        VStack(alignment: .leading, spacing: theme.spacing.xs) {
-                            Text("החיות שלי")
-                                .sectionHeader()
-                                .padding(.horizontal)
-
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: theme.spacing.md) {
-                                    ForEach(appState.pets) { pet in
-                                        PetSquareCard(pet: pet)
-                                    }
-
-                                    NavigationLink(destination: AddPetView()) {
-                                        VStack(spacing: theme.spacing.xs) {
-                                            Image(systemName: "plus")
-                                                .font(.largeTitle)
-                                            Text("הוסף חיה")
-                                                .font(theme.typography.headline)
-                                        }
-                                        .foregroundStyle(theme.color.accent)
-                                        .frame(width: 120, height: 120)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: theme.radius.card)
-                                                .strokeBorder(theme.color.accent, style: StrokeStyle(lineWidth: 2, dash: [5]))
-                                        )
-                                    }
-                                }
-                                .padding(.horizontal)
-                            }
-                        }
-
-                        Divider().overlay(theme.color.separator)
-                            .padding(.vertical)
-
-                        VStack(alignment: .leading, spacing: theme.spacing.xs) {
-                            HStack {
-                                Text("פוסטים פעילים")
-                                    .font(theme.typography.headline)
-                                Spacer()
-                                Text("פוסטים: \(appState.myActivePosts.count)")
-                                    .font(theme.typography.caption)
-                                    .foregroundStyle(theme.color.textSecondary)
-                            }
-                            .padding(.horizontal)
-
-                            if appState.myActivePosts.isEmpty {
-                                Text("אין פוסטים פעילים")
-                                    .font(theme.typography.subheadline)
-                                    .foregroundStyle(theme.color.textSecondary)
-                                    .padding(.horizontal)
-                            } else {
-                                ScrollView(.horizontal, showsIndicators: false) {
-                                    HStack(spacing: theme.spacing.md) {
-                                        ForEach(appState.myActivePosts) { post in
-                                            PostSquareCard(post: post)
-                                        }
-                                    }
-                                    .padding(.horizontal)
-                                }
-                            }
-                        }
-
-                        Spacer(minLength: theme.spacing.xl)
-
-                        Button("התנתק") {
-                            do {
-                                GIDSignIn.sharedInstance.signOut()
-                                try Auth.auth().signOut()
-                            } catch {
-                                print("Error signing out: \(error)")
-                            }
-                        }
-                        .buttonStyle(DestructiveButtonStyle(fullWidth: false))
-                        .padding(.bottom, theme.spacing.sm)
-
-                        // F-27: account deletion (required for App Store compliance).
-                        Button("מחק חשבון") { showDeleteConfirm = true }
-                            .font(theme.typography.subheadline)
-                            .foregroundStyle(theme.color.error)
-                            .padding(.bottom, theme.spacing.lg)
+                        ProfileHeaderCard(user: user)
+                        ProfileSettingsCard()
+                        petsSection
+                        postsSection
+                        AccountActionsCard(
+                            logout: signOut,
+                            deleteTapped: { showDeleteConfirm = true }
+                        )
                     }
                 }
+                .padding(.horizontal, theme.spacing.md)
+                .padding(.vertical, theme.spacing.lg)
             }
-            .scrollContentBackground(.hidden)
-            .background(theme.color.background.edgesIgnoringSafeArea(.all))
+            .screenBackground()
             .navigationTitle("הפרופיל שלי")
             .alert("מחיקת חשבון", isPresented: $showDeleteConfirm) {
                 Button("מחק", role: .destructive) {
@@ -155,6 +44,80 @@ struct OwnerProfileView: View {
             } message: {
                 Text(deleteErrorMessage ?? "")
             }
+        }
+    }
+
+    // MARK: My Pets
+
+    private var petsSection: some View {
+        VStack(alignment: .leading, spacing: theme.spacing.sm) {
+            Text("החיות שלי")
+                .sectionHeader()
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: theme.spacing.md) {
+                    ForEach(appState.pets) { pet in
+                        PetSquareCard(pet: pet)
+                    }
+
+                    NavigationLink(destination: AddPetView()) {
+                        VStack(spacing: theme.spacing.xs) {
+                            Image(systemName: "plus")
+                                .font(.largeTitle)
+                            Text("הוסף חיה")
+                                .font(theme.typography.headline)
+                        }
+                        .foregroundStyle(theme.color.accent)
+                        .frame(width: 120, height: 120)
+                        .background(
+                            RoundedRectangle(cornerRadius: theme.radius.card)
+                                .strokeBorder(theme.color.accent, style: StrokeStyle(lineWidth: 2, dash: [5]))
+                        )
+                    }
+                }
+                .padding(.vertical, theme.spacing.xxs)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: Active Posts
+
+    private var postsSection: some View {
+        VStack(alignment: .leading, spacing: theme.spacing.sm) {
+            HStack {
+                Text("פוסטים פעילים")
+                    .font(theme.typography.headline)
+                Spacer()
+                Text("פוסטים: \(appState.myActivePosts.count)")
+                    .font(theme.typography.caption)
+                    .foregroundStyle(theme.color.textSecondary)
+            }
+
+            if appState.myActivePosts.isEmpty {
+                Text("אין פוסטים פעילים")
+                    .font(theme.typography.subheadline)
+                    .foregroundStyle(theme.color.textSecondary)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: theme.spacing.md) {
+                        ForEach(appState.myActivePosts) { post in
+                            PostSquareCard(post: post)
+                        }
+                    }
+                    .padding(.vertical, theme.spacing.xxs)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func signOut() {
+        do {
+            GIDSignIn.sharedInstance.signOut()
+            try Auth.auth().signOut()
+        } catch {
+            print("Error signing out: \(error)")
         }
     }
 }

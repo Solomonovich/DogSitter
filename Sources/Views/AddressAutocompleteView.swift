@@ -67,6 +67,14 @@ struct AddressAutocompleteField: View {
                         viewModel.searchQuery = newValue
                     }
                 }
+                // Commit typed text as the address too, so onboarding isn't hard-blocked
+                // when MapKit autocomplete returns no suggestions (network/region/device
+                // state). Tapping a suggestion still overwrites this with the clean address.
+                .onChange(of: viewModel.searchQuery) { newValue in
+                    if text != newValue {
+                        text = newValue
+                    }
+                }
 
                 if viewModel.isSearching {
                     LottieProgressView(size: 40)

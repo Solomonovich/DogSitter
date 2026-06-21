@@ -12,71 +12,21 @@ struct ProfileView: View {
 
     var body: some View {
         NavigationView {
-            Form {
-                if let user = appState.currentUser {
-                    Section(header: Text("פרטים אישיים")) {
-                        profileRow("שם מלא", user.name)
-                        profileRow("שם משתמש", user.username)
-                        profileRow("כתובת", user.address ?? "")
-                        profileRow("טלפון", user.phone ?? "")
+            ScrollView {
+                VStack(spacing: theme.spacing.lg) {
+                    if let user = appState.currentUser {
+                        ProfileHeaderCard(user: user)
+                        ProfileSettingsCard()
+                        AccountActionsCard(
+                            logout: signOut,
+                            deleteTapped: { showDeleteConfirm = true }
+                        )
                     }
                 }
-
-                Section {
-                    NavigationLink(destination: ThemePickerView()) {
-                        Label("מראה ותצוגה", systemImage: "paintbrush.fill")
-                            .foregroundStyle(theme.color.accent)
-                    }
-                }
-
-                Section {
-                    NavigationLink(destination: EditProfileView()) {
-                        Text("ערוך פרופיל")
-                            .font(theme.typography.headline)
-                            .foregroundStyle(theme.color.accent)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                    }
-                    .padding()
-                    .background(theme.color.surfaceSecondary)
-                    .clipShape(RoundedRectangle(cornerRadius: theme.radius.md, style: .continuous))
-                }
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
-
-                Section {
-                    Button(action: {
-                        do {
-                            GIDSignIn.sharedInstance.signOut()
-                            try Auth.auth().signOut()
-                        } catch {
-                            print("Error signing out: \(error)")
-                        }
-                    }) {
-                        Text("התנתק")
-                            .font(theme.typography.headline)
-                            .foregroundStyle(theme.color.error)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                    }
-                    .padding()
-                    .background(theme.color.surfaceSecondary)
-                    .clipShape(RoundedRectangle(cornerRadius: theme.radius.md, style: .continuous))
-
-                    // F-27: account deletion (required for App Store compliance).
-                    Button(role: .destructive) { showDeleteConfirm = true } label: {
-                        Text("מחק חשבון")
-                            .font(theme.typography.subheadline)
-                            .foregroundStyle(theme.color.error)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                    }
-                    .padding(.top, 4)
-                }
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                .listRowBackground(Color.clear)
-                .listRowSeparator(.hidden)
+                .padding(.horizontal, theme.spacing.md)
+                .padding(.vertical, theme.spacing.lg)
             }
-            .scrollContentBackground(.hidden)
-            .background(theme.color.background.edgesIgnoringSafeArea(.all))
+            .screenBackground()
             .navigationTitle("הפרופיל שלי")
             .alert("מחיקת חשבון", isPresented: $showDeleteConfirm) {
                 Button("מחק", role: .destructive) {
@@ -97,11 +47,12 @@ struct ProfileView: View {
         }
     }
 
-    private func profileRow(_ label: String, _ value: String) -> some View {
-        HStack {
-            Text(label)
-            Spacer()
-            Text(value).foregroundStyle(theme.color.textSecondary)
+    private func signOut() {
+        do {
+            GIDSignIn.sharedInstance.signOut()
+            try Auth.auth().signOut()
+        } catch {
+            print("Error signing out: \(error)")
         }
     }
 }
@@ -121,38 +72,40 @@ struct EditProfileView: View {
     @State private var errorMessage: String? = nil
     
     var body: some View {
-        Form {
-            Section(header: Text("פרטים אישיים")) {
-                TextField("שם מלא", text: $name)
-                TextField("שם משתמש", text: $username)
-                TextField("כתובת", text: $address)
-                if appState.currentUser?.role == "sitter" {
-                    TextField("טלפון", text: $phone)
-                        .keyboardType(.phonePad)
+        ScrollView {
+            VStack(spacing: theme.spacing.md) {
+                VStack(spacing: theme.spacing.sm) {
+                    ThemedInputField(icon: "person", placeholder: "שם מלא", text: $name)
+                    ThemedInputField(icon: "at", placeholder: "שם משתמש", text: $username)
+                    ThemedInputField(icon: "mappin.and.ellipse", placeholder: "כתובת", text: $address)
+                    if appState.currentUser?.role == "sitter" {
+                        ThemedInputField(icon: "phone", placeholder: "טלפון", text: $phone, keyboard: .phonePad)
+                    }
                 }
-            }
-            
-            if let error = errorMessage {
-                Text(error)
-                    .foregroundStyle(theme.color.error)
-                    .multilineTextAlignment(.center)
-            }
+                .card()
 
-            Button(action: saveProfile) {
-                if isSaving {
-                    LottieProgressView(size: 36)
-                } else {
-                    Text("שמור")
+                if let error = errorMessage {
+                    Text(error)
+                        .font(theme.typography.subheadline)
+                        .foregroundStyle(theme.color.error)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
                 }
+
+                Button(action: saveProfile) {
+                    if isSaving {
+                        LottieProgressView(size: 36)
+                    } else {
+                        Text("שמור")
+                    }
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .disabled(name.isEmpty || username.isEmpty || isSaving)
             }
-            .buttonStyle(PrimaryButtonStyle())
-            .disabled(name.isEmpty || username.isEmpty || isSaving)
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
-            .padding(.top, theme.spacing.md)
+            .padding(.horizontal, theme.spacing.md)
+            .padding(.vertical, theme.spacing.lg)
         }
-        .scrollContentBackground(.hidden)
-        .background(theme.color.background.edgesIgnoringSafeArea(.all))
+        .screenBackground()
         .environment(\.layoutDirection, .rightToLeft)
         .navigationTitle("ערוך פרופיל")
         .navigationBarTitleDisplayMode(.inline)

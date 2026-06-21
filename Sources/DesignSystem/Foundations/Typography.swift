@@ -5,11 +5,14 @@ import SwiftUI
 /// font app-wide while keeping Dynamic Type scaling.
 struct Typography: Equatable {
     var customFontName: String? = nil
+    /// Multiplier applied to every token, driven by the user's text-size preference.
+    var scale: CGFloat = 1.0
 
     private func font(_ size: CGFloat,
                       _ weight: Font.Weight,
                       _ design: Font.Design = .default,
                       relativeTo style: Font.TextStyle) -> Font {
+        let size = size * scale
         if let name = customFontName {
             return .custom(name, size: size, relativeTo: style)
         }

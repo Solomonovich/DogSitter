@@ -4,14 +4,14 @@ struct MainTabView: View {
     @EnvironmentObject var appState: AppState
     @Environment(\.theme) private var theme
 
-    // Maintain state for selected tab
-    @State private var sitterTab: Int = 0
+    // Maintain state for selected tab. The sitter tab lives in AppState so deep
+    // links (e.g. "go to chat" from a post card) can switch to messages.
     @State private var ownerTab: Int = 3 // Owner defaults to messages
-    
+
     var body: some View {
         Group {
         if appState.currentUserRole == .sitter {
-            TabView(selection: $sitterTab) {
+            TabView(selection: $appState.sitterSelectedTab) {
                 BrowsePostsView()
                     .tabItem {
                         Label("פוסטים", systemImage: "magnifyingglass")

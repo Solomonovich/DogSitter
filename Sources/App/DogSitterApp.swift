@@ -11,6 +11,10 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         } catch {
             print("Failed to clear access group: \(error.localizedDescription)")
         }
+        // Re-acquire an in-flight walk Live Activity after relaunch, and ask once for
+        // local-notification permission (used for sitter-side walk alerts).
+        WalkLiveActivityManager.shared.reattach()
+        NotificationManager.shared.requestAuthorization()
         return true
     }
 }
@@ -23,6 +27,7 @@ struct DogSitterApp: App {
     // Shared global state
     @StateObject private var appState = AppState()
     @StateObject private var themeManager = ThemeManager()
+    @StateObject private var chatReadStore = ChatReadStore()
     
     var body: some Scene {
         WindowGroup {
@@ -32,6 +37,7 @@ struct DogSitterApp: App {
                 .environment(\.locale, Locale(identifier: "he_IL"))
                 .environmentObject(appState)
                 .environmentObject(themeManager)
+                .environmentObject(chatReadStore)
                 .environment(\.theme, themeManager.theme)
                 .preferredColorScheme(themeManager.isDarkMode ? .dark : .light)
                 .overlay(
@@ -52,6 +58,12 @@ class ThemeManager: ObservableObject {
     @AppStorage("isDarkMode") var isDarkMode: Bool = true
     @AppStorage("themePalette") private var paletteRaw: String = ThemePalette.classic.rawValue
 
+    // Visual preferences (cosmetic). Stored raw; exposed via typed accessors below.
+    @AppStorage("textSizePref") private var textSizeRaw: String = TextSizePreference.standard.rawValue
+    @AppStorage("cornerStylePref") private var cornerStyleRaw: String = CornerStyle.rounded.rawValue
+    @AppStorage("avatarShapePref") private var avatarShapeRaw: String = AvatarShape.circle.rawValue
+    @AppStorage("useGradientBackground") private var useGradientBackgroundRaw: Bool = false
+
     @Published var isAnimating = false
     @Published var circleCenter: CGPoint = .zero
     @Published var colorSchemeTransitioningToDark: Bool? = nil
@@ -62,9 +74,41 @@ class ThemeManager: ObservableObject {
         set { objectWillChange.send(); paletteRaw = newValue.rawValue }
     }
 
+    // @AppStorage inside an ObservableObject doesn't auto-publish, so each setter
+    // sends objectWillChange (same pattern as `palette`) to refresh the injected theme.
+
+    /// App-wide text size.
+    var textSize: TextSizePreference {
+        get { TextSizePreference(rawValue: textSizeRaw) ?? .standard }
+        set { objectWillChange.send(); textSizeRaw = newValue.rawValue }
+    }
+
+    /// App-wide corner roundness.
+    var cornerStyle: CornerStyle {
+        get { CornerStyle(rawValue: cornerStyleRaw) ?? .rounded }
+        set { objectWillChange.send(); cornerStyleRaw = newValue.rawValue }
+    }
+
+    /// Avatar clip shape.
+    var avatarShape: AvatarShape {
+        get { AvatarShape(rawValue: avatarShapeRaw) ?? .circle }
+        set { objectWillChange.send(); avatarShapeRaw = newValue.rawValue }
+    }
+
+    /// Soft brand-gradient screen background (vs. solid fill).
+    var useGradientBackground: Bool {
+        get { useGradientBackgroundRaw }
+        set { objectWillChange.send(); useGradientBackgroundRaw = newValue }
+    }
+
     /// The fully-resolved theme to inject into the environment.
     var theme: Theme {
-        palette.theme(for: isDarkMode ? .dark : .light)
+        var t = palette.theme(for: isDarkMode ? .dark : .light)
+        t.typography.scale = textSize.scale
+        t.radius           = cornerStyle.radius
+        t.backgroundStyle  = useGradientBackground ? .gradient : .solid
+        t.avatarShape      = avatarShape
+        return t
     }
 
     func toggleTheme(from location: CGPoint) {

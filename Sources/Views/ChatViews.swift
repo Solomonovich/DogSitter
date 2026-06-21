@@ -5,21 +5,50 @@ import MapKit
 struct ChatsListView: View {
     @EnvironmentObject var appState: AppState
     @Environment(\.theme) private var theme
+    @State private var searchText = ""
+
+    private var hasChats: Bool {
+        appState.currentUserRole == .owner ? !appState.ownerChatGroups.isEmpty : !appState.sitterChats.isEmpty
+    }
 
     var body: some View {
         NavigationView {
-            ZStack {
-                theme.color.background.edgesIgnoringSafeArea(.all)
+            VStack(spacing: 0) {
+                if hasChats {
+                    ThemedInputField(icon: "magnifyingglass", placeholder: "חיפוש", text: $searchText)
+                        .padding(.horizontal, theme.spacing.md)
+                        .padding(.top, theme.spacing.sm)
+                        .padding(.bottom, theme.spacing.xs)
+                }
 
                 if appState.currentUserRole == .owner {
-                    OwnerChatListView()
+                    OwnerChatListView(searchText: searchText)
                 } else {
-                    SitterChatListView()
+                    SitterChatListView(searchText: searchText)
                 }
             }
+            .background(sitterTeleportLink)
+            .screenBackground()
             .navigationTitle("הודעות")
             .navigationBarTitleDisplayMode(.inline)
             .environment(\.layoutDirection, .rightToLeft)
+        }
+    }
+
+    /// Hidden link that pushes a specific chat when another screen requests it via
+    /// `appState.pendingChatId` (e.g. the sitter tapping a post they already chat about).
+    @ViewBuilder private var sitterTeleportLink: some View {
+        if appState.currentUserRole == .sitter {
+            let wrapper = appState.sitterChats.first { $0.chat.id == appState.pendingChatId }
+            NavigationLink(
+                isActive: Binding(
+                    get: { wrapper != nil },
+                    set: { active in if !active { appState.pendingChatId = nil } }
+                )
+            ) {
+                if let wrapper { ChatDetailView(chatWrapper: wrapper) }
+            } label: { EmptyView() }
+            .hidden()
         }
     }
 }
@@ -27,7 +56,19 @@ struct ChatsListView: View {
 // MARK: - Owner Chat Views
 struct OwnerChatListView: View {
     @EnvironmentObject var appState: AppState
-    
+    @Environment(\.theme) private var theme
+    var searchText: String = ""
+
+    private var filteredGroups: [OwnerChatGroup] {
+        guard !searchText.isEmpty else { return appState.ownerChatGroups }
+        let q = searchText.lowercased()
+        return appState.ownerChatGroups.filter { group in
+            let pets = group.pets.map { $0.name }.joined(separator: " ").lowercased()
+            let sitters = group.chats.map { $0.chat.sitterName }.joined(separator: " ").lowercased()
+            return pets.contains(q) || sitters.contains(q)
+        }
+    }
+
     var body: some View {
         if appState.ownerChatGroups.isEmpty {
             EmptyStateView(
@@ -37,12 +78,14 @@ struct OwnerChatListView: View {
             )
         } else {
             ScrollView {
-                LazyVStack(spacing: 12) {
-                    ForEach(appState.ownerChatGroups) { group in
+                LazyVStack(spacing: theme.spacing.md) {
+                    ForEach(filteredGroups) { group in
                         OwnerChatGroupView(group: group)
                     }
                 }
-                .padding(.top)
+                .padding(.horizontal, theme.spacing.md)
+                .padding(.top, theme.spacing.sm)
+                .padding(.bottom, theme.spacing.lg)
             }
         }
     }
@@ -54,130 +97,137 @@ struct OwnerChatGroupView: View {
     let group: OwnerChatGroup
     @State private var isExpanded: Bool = false
 
+    @ViewBuilder private var statusBadge: some View {
+        if group.isApproved {
+            Badge(text: "מאושר", kind: .success, systemImage: "checkmark")
+        } else if group.isActive {
+            Badge(text: "פעיל", kind: .accent)
+        } else {
+            Badge(text: "סגור", kind: .neutral)
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
             Button(action: {
                 if !group.isApproved {
-                    withAnimation(.spring()) {
-                        isExpanded.toggle()
-                    }
+                    withAnimation(.spring()) { isExpanded.toggle() }
                 }
             }) {
-                HStack {
-                    if group.isApproved {
-                        Image(systemName: "chevron.down").foregroundStyle(.clear) // Spacer
-                    } else {
-                        Image(systemName: isExpanded ? "chevron.down" : "chevron.left")
+                HStack(spacing: theme.spacing.sm) {
+                    if !group.isApproved {
+                        Image(systemName: isExpanded ? "chevron.down" : "chevron.forward")
+                            .font(theme.typography.footnote)
                             .foregroundStyle(theme.color.textSecondary)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(group.pets.map { $0.name }.joined(separator: ", "))
+                            .font(theme.typography.headline)
+                            .foregroundStyle(group.isActive ? theme.color.textPrimary : theme.color.textSecondary)
+                            .lineLimit(1)
+                        if let post = group.post {
+                            Text("\(post.startDate.dateValue().formatted(date: .abbreviated, time: .omitted)) – \(post.endDate.dateValue().formatted(date: .abbreviated, time: .omitted))")
+                                .font(theme.typography.caption)
+                                .foregroundStyle(theme.color.textSecondary)
+                        }
                     }
 
                     Spacer()
 
-                    VStack(alignment: .trailing) {
-                        HStack {
-                            Text(group.pets.map { $0.name }.joined(separator: ", "))
-                                .font(theme.typography.headline)
-                                .foregroundStyle(group.isActive ? theme.color.textPrimary : theme.color.textSecondary)
-
-                            Circle()
-                                .fill(group.isActive ? theme.color.success : theme.color.textSecondary)
-                                .frame(width: 8, height: 8)
-                        }
-                        if let post = group.post {
-                            Text("\(post.startDate.dateValue().formatted(date: .numeric, time: .omitted)) - \(post.endDate.dateValue().formatted(date: .numeric, time: .omitted))")
-                                .font(.system(size: 12))
-                                .foregroundStyle(theme.color.textSecondary)
-                        }
-                    }
+                    statusBadge
                 }
-                .padding(.horizontal)
-                .frame(height: 44)
-                .background(group.isActive ? theme.color.success.opacity(0.12) : theme.color.surfaceSecondary)
+                .padding(theme.spacing.md)
+                .contentShape(Rectangle())
             }
-            .buttonStyle(PlainButtonStyle())
+            .buttonStyle(.plain)
 
             if isExpanded || group.isApproved {
                 ForEach(group.chats) { wrapper in
+                    Divider().overlay(theme.color.separator)
                     NavigationLink(destination: ChatDetailView(chatWrapper: wrapper)) {
-                        OwnerChatRowView(wrapper: wrapper, isApproved: wrapper.chat.approved)
+                        OwnerChatRowView(wrapper: wrapper)
                     }
-                    .buttonStyle(PlainButtonStyle())
-                    .swipeActions(edge: .leading) {
-                        Button("ארכיון") {
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        Button(role: .destructive) {
                             if let id = wrapper.chat.id {
                                 Task { await appState.archiveChat(chatId: id) }
                             }
+                        } label: {
+                            Label("ארכיון", systemImage: "archivebox")
                         }
-                        .tint(theme.color.error)
                     }
                 }
             }
         }
-        .background(theme.color.surface)
-        .clipShape(RoundedRectangle(cornerRadius: theme.radius.md, style: .continuous))
-        .padding(.horizontal)
+        .card(padding: 0)
         .onAppear {
-            if group.isApproved {
-                isExpanded = true
-            }
+            if group.isApproved { isExpanded = true }
         }
     }
 }
 
 struct OwnerChatRowView: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var chatReadStore: ChatReadStore
     @Environment(\.theme) private var theme
     let wrapper: ChatWrapper
-    let isApproved: Bool
     @State private var showingApproveAlert = false
 
+    private var isUnread: Bool { chatReadStore.isUnread(wrapper.chat) }
+
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading) {
-                if let t = wrapper.chat.lastMessageTime?.dateValue() {
-                    Text(t.formatted(date: .omitted, time: .shortened))
-                        .font(.system(size: 12))
-                        .foregroundStyle(theme.color.textSecondary)
-                }
+        HStack(spacing: theme.spacing.sm) {
+            ProfileAvatar(photoURL: wrapper.chat.sitterPhotoURL, size: 52)
 
-                if isApproved {
-                    Image(systemName: "checkmark")
-                        .foregroundStyle(theme.color.success)
-                } else {
-                    Button(action: { showingApproveAlert = true }) {
-                        Text("אשר")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(theme.color.textOnAccent)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 6)
-                            .background(theme.color.accent)
-                            .clipShape(Capsule())
-                    }
-                }
-            }
-
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(wrapper.chat.sitterName)
-                    .font(.system(size: 16, weight: .bold))
-
+                    .font(theme.typography.headline)
+                    .fontWeight(isUnread ? .bold : .semibold)
+                    .foregroundStyle(theme.color.textPrimary)
+                    .lineLimit(1)
                 Text(wrapper.chat.lastMessage ?? "...")
-                    .font(.system(size: 14))
-                    .foregroundStyle(theme.color.textSecondary)
+                    .font(theme.typography.subheadline)
+                    .fontWeight(isUnread ? .semibold : .regular)
+                    .foregroundStyle(isUnread ? theme.color.textPrimary : theme.color.textSecondary)
                     .lineLimit(1)
             }
 
-            CachedAsyncImage(wrapper.chat.sitterPhotoURL, contentMode: .fill, targetSize: 88) {
-                Image(systemName: "person.circle.fill").resizable().foregroundStyle(theme.color.textSecondary)
+            Spacer(minLength: theme.spacing.xs)
+
+            VStack(alignment: .trailing, spacing: theme.spacing.xxs) {
+                if let t = wrapper.chat.lastMessageTime?.dateValue() {
+                    Text(ChatTime.inboxTimestamp(t))
+                        .font(theme.typography.caption)
+                        .foregroundStyle(isUnread ? theme.color.accent : theme.color.textSecondary)
+                }
+
+                if wrapper.chat.approved {
+                    if isUnread {
+                        Circle().fill(theme.color.accent).frame(width: 10, height: 10)
+                    } else {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(theme.color.success)
+                    }
+                } else {
+                    Button(action: { showingApproveAlert = true }) {
+                        Text("אשר")
+                            .font(theme.typography.caption)
+                            .fontWeight(.bold)
+                            .foregroundStyle(theme.color.textOnAccent)
+                            .padding(.horizontal, theme.spacing.md)
+                            .padding(.vertical, theme.spacing.xxs)
+                            .background(theme.color.accent)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                }
             }
-            .frame(width: 44, height: 44)
-            .clipShape(Circle())
         }
-        .padding()
-        .frame(height: 72)
-        .background(isApproved ? theme.color.accent.opacity(0.12) : theme.color.surface)
+        .padding(theme.spacing.sm)
+        .contentShape(Rectangle())
         .alert("אישור מטפל", isPresented: $showingApproveAlert) {
             Button("ביטול", role: .cancel) { }
             Button("אשר") {
@@ -194,6 +244,18 @@ struct OwnerChatRowView: View {
 // MARK: - Sitter Chat Views
 struct SitterChatListView: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var chatReadStore: ChatReadStore
+    @Environment(\.theme) private var theme
+    var searchText: String = ""
+
+    private var filtered: [ChatWrapper] {
+        guard !searchText.isEmpty else { return appState.sitterChats }
+        let q = searchText.lowercased()
+        return appState.sitterChats.filter { w in
+            w.chat.ownerName.lowercased().contains(q) ||
+            w.pets.map { $0.name }.joined(separator: " ").lowercased().contains(q)
+        }
+    }
 
     var body: some View {
         if appState.sitterChats.isEmpty {
@@ -203,80 +265,38 @@ struct SitterChatListView: View {
                 message: "חפש פוסטים והבע עניין כדי להתחיל שיחה"
             )
         } else {
-            List {
-                ForEach(appState.sitterChats) { wrapper in
-                    NavigationLink(destination: ChatDetailView(chatWrapper: wrapper)) {
-                        SitterChatRowView(wrapper: wrapper)
+            ScrollView {
+                LazyVStack(spacing: theme.spacing.sm) {
+                    ForEach(filtered) { wrapper in
+                        NavigationLink(destination: ChatDetailView(chatWrapper: wrapper)) {
+                            ChatInboxRow(
+                                name: wrapper.chat.ownerName,
+                                photoURL: wrapper.chat.ownerPhotoURL,
+                                subtitle: wrapper.pets.map { $0.name }.joined(separator: ", "),
+                                preview: wrapper.chat.lastMessage ?? "...",
+                                time: wrapper.chat.lastMessageTime?.dateValue(),
+                                isUnread: chatReadStore.isUnread(wrapper.chat),
+                                isApproved: wrapper.chat.approved
+                            )
+                            .card(padding: 0)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .listRowInsets(EdgeInsets())
-                    .buttonStyle(PlainButtonStyle())
                 }
+                .padding(.horizontal, theme.spacing.md)
+                .padding(.top, theme.spacing.sm)
+                .padding(.bottom, theme.spacing.lg)
             }
-            .listStyle(PlainListStyle())
         }
     }
 }
 
-struct SitterChatRowView: View {
-    @Environment(\.theme) private var theme
-    let wrapper: ChatWrapper
-
-    var isActive: Bool {
-        wrapper.post?.status == "open" || wrapper.chat.approved
-    }
-
-    var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading) {
-                if let t = wrapper.chat.lastMessageTime?.dateValue() {
-                    Text(t.formatted(date: .omitted, time: .shortened))
-                        .font(.system(size: 12))
-                        .foregroundStyle(theme.color.textSecondary)
-                }
-
-                HStack(spacing: 4) {
-                    if wrapper.chat.approved {
-                        Text("✓ אושרת")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(theme.color.success)
-                    }
-                    Circle()
-                        .fill(isActive ? theme.color.success : theme.color.textSecondary)
-                        .frame(width: 8, height: 8)
-                }
-            }
-
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 4) {
-                Text(wrapper.chat.ownerName)
-                    .font(.system(size: 16, weight: .bold))
-
-                Text(wrapper.pets.map { $0.name }.joined(separator: ", "))
-                    .font(.system(size: 12))
-                    .foregroundStyle(theme.color.accent)
-
-                Text(wrapper.chat.lastMessage ?? "...")
-                    .font(.system(size: 14))
-                    .foregroundStyle(theme.color.textSecondary)
-                    .lineLimit(1)
-            }
-
-            CachedAsyncImage(wrapper.chat.ownerPhotoURL, contentMode: .fill, targetSize: 88) {
-                Image(systemName: "person.circle.fill").resizable().foregroundStyle(theme.color.textSecondary)
-            }
-            .frame(width: 44, height: 44)
-            .clipShape(Circle())
-        }
-        .padding()
-        .frame(height: 72)
-        .background(wrapper.chat.approved ? theme.color.accent.opacity(0.12) : theme.color.surface)
-    }
-}
+// SitterChatRowView was replaced by the shared ChatInboxRow.
 
 // MARK: - Chat Detail
 struct ChatDetailView: View {
     @EnvironmentObject var appState: AppState
+    @EnvironmentObject var chatReadStore: ChatReadStore
     @Environment(\.theme) private var theme
     let chatWrapper: ChatWrapper
 
@@ -329,13 +349,16 @@ struct ChatDetailView: View {
     
     var body: some View {
         ZStack {
-            theme.color.background.edgesIgnoringSafeArea(.all)
-
             VStack(spacing: 0) {
+                BookingSummaryChip(post: chatWrapper.post, pets: chatWrapper.pets)
+
                 ScrollViewReader { proxy in
                     ScrollView {
-                        LazyVStack(spacing: 12) {
-                            ForEach(messages) { msg in
+                        LazyVStack(spacing: theme.spacing.sm) {
+                            ForEach(Array(messages.enumerated()), id: \.element.id) { index, msg in
+                                if shouldShowDaySeparator(at: index), let d = msg.createdAt?.dateValue() {
+                                    DateSeparator(date: d)
+                                }
                                 ChatBubbleView(msg: msg, currentUserId: appState.currentUser?.id, selectedLightboxURL: $selectedLightboxURL) { walkId in
                                     self.walkToOpen = WalkIdentifier(id: walkId)
                                 }
@@ -359,6 +382,7 @@ struct ChatDetailView: View {
                         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
                     }
                     .onChange(of: messages.count) { _, newCount in
+                        markReadLatest()
                         guard let last = messages.last?.id else { return }
                         if !hasInitialScrolled && newCount > 0 {
                             hasInitialScrolled = true
@@ -370,6 +394,7 @@ struct ChatDetailView: View {
                         }
                     }
                     .onAppear {
+                        markReadLatest()
                         if !messages.isEmpty && !hasInitialScrolled {
                             hasInitialScrolled = true
                             if let lastId = messages.last?.id {
@@ -532,6 +557,7 @@ struct ChatDetailView: View {
                 .transition(.opacity)
             }
         }
+        .screenBackground()
         .confirmationDialog(
             "בחר תמונה",
             isPresented: $showingSourceDialog,
@@ -610,14 +636,10 @@ struct ChatDetailView: View {
                 Button(action: {
                     activeSheet = .userProfile
                 }) {
-                    CachedAsyncImage(
-                        appState.currentUserRole == .owner ? chatWrapper.chat.sitterPhotoURL : chatWrapper.chat.ownerPhotoURL,
-                        contentMode: .fill, targetSize: 72
-                    ) {
-                        Image(systemName: "person.circle.fill").resizable().foregroundStyle(theme.color.textSecondary)
-                    }
-                    .frame(width: 36, height: 36)
-                    .clipShape(Circle())
+                    ProfileAvatar(
+                        photoURL: appState.currentUserRole == .owner ? chatWrapper.chat.sitterPhotoURL : chatWrapper.chat.ownerPhotoURL,
+                        size: 34
+                    )
                 }
             }
         }
@@ -638,6 +660,20 @@ struct ChatDetailView: View {
         }
     }
     
+    private func shouldShowDaySeparator(at index: Int) -> Bool {
+        guard messages.indices.contains(index),
+              let cur = messages[index].createdAt?.dateValue() else { return false }
+        if index == 0 { return true }
+        guard let prev = messages[index - 1].createdAt?.dateValue() else { return true }
+        return ChatTime.isDifferentDay(cur, prev)
+    }
+
+    private func markReadLatest() {
+        guard let cid = chatWrapper.chat.id else { return }
+        let latest = messages.compactMap { $0.createdAt?.dateValue() }.max() ?? Date()
+        chatReadStore.markRead(cid, upTo: latest)
+    }
+
     func fetchOtherUser() {
         Task {
             let id = appState.currentUserRole == .owner ? chatWrapper.chat.sitterId : chatWrapper.chat.ownerId
@@ -722,14 +758,18 @@ struct ChatBubbleView: View {
 
     var body: some View {
         if msg.type == "payment" {
-            Text(msg.text)
-                .font(.system(size: 14, weight: .bold))
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(theme.color.success.opacity(0.18))
-                .foregroundStyle(theme.color.success)
-                .clipShape(RoundedRectangle(cornerRadius: theme.radius.card, style: .continuous))
-                .frame(maxWidth: .infinity, alignment: .center)
+            VStack(spacing: 2) {
+                Text(msg.text)
+                    .font(theme.typography.subheadline)
+                    .fontWeight(.bold)
+                    .padding(.horizontal, theme.spacing.md)
+                    .padding(.vertical, theme.spacing.xs)
+                    .background(theme.color.success.opacity(0.18))
+                    .foregroundStyle(theme.color.success)
+                    .clipShape(RoundedRectangle(cornerRadius: theme.radius.card, style: .continuous))
+                timestamp
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
         } else if msg.type == "walk" {
             WalkBubbleContent(msg: msg, isMine: isMine, onTap: {
                 if let wid = msg.walkId {
@@ -740,16 +780,19 @@ struct ChatBubbleView: View {
             HStack {
                 if isMine { Spacer() }
 
-                CachedAsyncImage(photoURL, contentMode: .fill, targetSize: 400) {
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(theme.color.surfaceSecondary)
-                        .overlay(LottieProgressView(size: 40))
-                }
-                .frame(width: 200, height: 200)
-                .clipped()
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .onTapGesture {
-                    selectedLightboxURL = photoURL
+                VStack(alignment: isMine ? .trailing : .leading, spacing: 4) {
+                    CachedAsyncImage(photoURL, contentMode: .fill, targetSize: 400) {
+                        RoundedRectangle(cornerRadius: theme.radius.card)
+                            .fill(theme.color.surfaceSecondary)
+                            .overlay(LottieProgressView(size: 40))
+                    }
+                    .frame(width: 200, height: 200)
+                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: theme.radius.card, style: .continuous))
+                    .onTapGesture {
+                        selectedLightboxURL = photoURL
+                    }
+                    timestamp
                 }
 
                 if !isMine { Spacer() }
@@ -764,16 +807,19 @@ struct ChatBubbleView: View {
                         .padding(12)
                         .background(isMine ? theme.color.accent : theme.color.surfaceSecondary)
                         .foregroundStyle(isMine ? theme.color.textOnAccent : theme.color.textPrimary)
-                        .clipShape(RoundedCorner(radius: 16, corners: isMine ? [.topLeft, .topRight, .bottomLeft] : [.topLeft, .topRight, .bottomRight]))
-
-                    if let d = msg.createdAt?.dateValue() {
-                        Text(d.formatted(date: .omitted, time: .shortened))
-                            .font(.system(size: 10))
-                            .foregroundStyle(theme.color.textSecondary)
-                    }
+                        .clipShape(RoundedCorner(radius: theme.radius.card, corners: isMine ? [.topLeft, .topRight, .bottomLeft] : [.topLeft, .topRight, .bottomRight]))
+                    timestamp
                 }
                 if !isMine { Spacer() }
             }
+        }
+    }
+
+    @ViewBuilder private var timestamp: some View {
+        if let d = msg.createdAt?.dateValue() {
+            Text(d.formatted(date: .omitted, time: .shortened))
+                .font(theme.typography.caption)
+                .foregroundStyle(theme.color.textSecondary)
         }
     }
 }
@@ -814,52 +860,56 @@ struct ChatUserProfileView: View {
                         VStack(spacing: 20) {
                             // Header Section
                         VStack(spacing: 8) {
-                            CachedAsyncImage(user.photoURL, contentMode: .fill, targetSize: 200) {
-                                Image(systemName: "person.circle.fill").resizable().foregroundStyle(theme.color.textSecondary)
-                            }
-                            .frame(width: 100, height: 100)
-                            .clipShape(Circle())
+                            ProfileAvatar(photoURL: user.photoURL, size: 96)
 
                             Text(user.name)
-                                .font(.system(size: 22, weight: .bold))
+                                .font(theme.typography.title)
                                 .foregroundStyle(theme.color.textPrimary)
                             
                             if isApproved {
-                                if let address = user.address, !address.isEmpty {
-                                    Text(address)
-                                        .font(.system(size: 15))
-                                        .foregroundStyle(theme.color.textSecondary)
-                                        .multilineTextAlignment(.center)
-                                        .padding(.horizontal)
-                                }
+                                VStack(spacing: theme.spacing.sm) {
+                                    if let address = user.address, !address.isEmpty {
+                                        HStack(spacing: theme.spacing.xs) {
+                                            Image(systemName: "mappin.and.ellipse")
+                                                .foregroundStyle(theme.color.textSecondary)
+                                            Text(address)
+                                                .font(theme.typography.subheadline)
+                                                .foregroundStyle(theme.color.textPrimary)
+                                                .multilineTextAlignment(.center)
+                                        }
+                                    }
 
-                                if let phone = user.phone, !phone.isEmpty {
-                                    Button(action: {
-                                        if let url = URL(string: "tel://\(phone)") {
-                                            UIApplication.shared.open(url)
+                                    if let phone = user.phone, !phone.isEmpty {
+                                        Button(action: {
+                                            if let url = URL(string: "tel://\(phone)") {
+                                                UIApplication.shared.open(url)
+                                            }
+                                        }) {
+                                            HStack(spacing: theme.spacing.xs) {
+                                                Image(systemName: "phone.fill")
+                                                Text(phone)
+                                                    .font(theme.typography.subheadline)
+                                            }
+                                            .foregroundStyle(theme.color.accent)
                                         }
-                                    }) {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "phone.fill")
-                                                .font(.system(size: 13))
-                                            Text(phone)
-                                                .font(.system(size: 15))
-                                        }
-                                        .foregroundStyle(theme.color.accent)
                                     }
                                 }
+                                .frame(maxWidth: .infinity)
+                                .card()
+                                .padding(.horizontal, theme.spacing.md)
                             } else {
                                 Text("פרטי יצירת קשר יוצגו לאחר אישור הבקינג")
-                                    .font(.system(size: 14))
+                                    .font(theme.typography.subheadline)
                                     .foregroundStyle(theme.color.textSecondary)
                                     .multilineTextAlignment(.center)
-                                    .padding(16)
+                                    .padding(theme.spacing.md)
+                                    .frame(maxWidth: .infinity)
                                     .background(theme.color.surfaceSecondary)
                                     .clipShape(RoundedRectangle(cornerRadius: theme.radius.md, style: .continuous))
-                                    .padding(.horizontal)
+                                    .padding(.horizontal, theme.spacing.md)
                             }
                         }
-                        .padding(.top, 20)
+                        .padding(.top, theme.spacing.lg)
                         
                         Divider()
                         
@@ -1233,49 +1283,13 @@ struct WalkBubbleContent: View {
         } else if let msgCoords = msg.coordinates, !msgCoords.isEmpty {
             coords = msgCoords.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
         }
-        
-        guard coords.count > 1 else { return }
-        
-        let polyline = MKPolyline(coordinates: coords, count: coords.count)
-        
-        var mapRect = polyline.boundingMapRect
-        mapRect = mapRect.insetBy(dx: -mapRect.width * 0.2, dy: -mapRect.height * 0.2)
-        
-        let options = MKMapSnapshotter.Options()
-        options.region = MKCoordinateRegion(mapRect)
-        options.size = CGSize(width: 280, height: 160)
-        
-        let snapshotter = MKMapSnapshotter(options: options)
-        snapshotter.start { snapshot, error in
-            guard let snapshot = snapshot, error == nil else {
-                print("Snapshot error: \(String(describing: error))")
-                return
-            }
-            
-            let image = snapshot.image
-            UIGraphicsBeginImageContextWithOptions(image.size, true, image.scale)
-            image.draw(at: .zero)
-            
-            if let context = UIGraphicsGetCurrentContext() {
-                context.setLineWidth(4.0)
-                context.setStrokeColor(UIColor(theme.color.accent).cgColor)
-                
-                let points = coords.map { snapshot.point(for: $0) }
-                if let first = points.first {
-                    context.move(to: first)
-                    for point in points.dropFirst() {
-                        context.addLine(to: point)
-                    }
-                    context.strokePath()
-                }
-            }
-            
-            let finalImage = UIGraphicsGetImageFromCurrentImageContext()
-            UIGraphicsEndImageContext()
-            
-            DispatchQueue.main.async {
-                self.snapshotImage = finalImage
-            }
+
+        RouteSnapshotter.makeRouteSnapshot(
+            coordinates: coords,
+            size: CGSize(width: 280, height: 160),
+            strokeColor: UIColor(theme.color.accent)
+        ) { image in
+            if let image = image { self.snapshotImage = image }
         }
     }
     
