@@ -54,6 +54,13 @@ class AppState: ObservableObject {
     private var myPostsListener: ListenerRegistration?
     
     init() {
+        // Route Live Activity button taps (Pause/Resume/End). A LiveActivityIntent's
+        // perform() runs in this app process, so the handler can reach LocationTracker +
+        // self directly. Registered once here so it survives a background relaunch.
+        WalkActivityActionCenter.shared.handler = { [weak self] command in
+            await self?.handleWalkCommand(command)
+        }
+
         // Tie into Auth System
         _ = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             guard let self = self else { return }
@@ -533,6 +540,15 @@ class AppState: ObservableObject {
         }
     }
 
+    /// Deep-link target (`dogsitter://walk/{walkId}`): open the chat that owns the walk.
+    func openWalk(byId walkId: String) {
+        Task {
+            if let walk = await fetchWalk(walkId) {
+                openChat(walk.chatId)
+            }
+        }
+    }
+
     func expressInterest(in post: Post) async throws {
         guard let postId = post.id, let user = currentUser, let uid = user.id else { return }
 
@@ -676,6 +692,44 @@ class AppState: ObservableObject {
         tracker.onSync = nil
         tracker.onLiveActivityUpdate = nil
         WalkLiveActivityManager.shared.end()
+    }
+
+    private func fetchWalk(_ walkId: String) async -> Walk? {
+        try? await db.collection("walks").document(walkId).getDocument(as: Walk.self)
+    }
+
+    /// Executes a Live Activity button action. Runs in-app (LiveActivityIntent), so it can
+    /// drive the tracker directly. Intents carry `walkId`, so it works even post-relaunch.
+    func handleWalkCommand(_ command: WalkActivityCommand) async {
+        let tracker = LocationTracker.shared
+        switch command {
+        case .togglePause(let walkId):
+            let newPaused: Bool
+            if tracker.isTracking {
+                if tracker.isPaused { tracker.resumeWalk(); newPaused = false }
+                else { tracker.pauseWalk(); newPaused = true }
+            } else {
+                // No live session (relaunched): flip from the doc and refresh the Activity.
+                let doc = await fetchWalk(walkId)
+                newPaused = !(doc?.isPaused ?? false)
+                WalkLiveActivityManager.shared.update(
+                    distanceKm: doc?.distance ?? 0,
+                    isPaused: newPaused,
+                    elapsedSeconds: Int((doc?.duration ?? 0) * 60))
+            }
+            await setWalkPaused(walkId: walkId, isPaused: newPaused)
+
+        case .end(let walkId):
+            let doc = await fetchWalk(walkId)
+            let finalDistance = tracker.isTracking ? tracker.totalDistance : (doc?.distance ?? 0)
+            let finalDuration = tracker.isTracking ? Double(tracker.elapsedSeconds) / 60.0 : (doc?.duration ?? 0)
+            tracker.stopTracking()
+            endWalkSession()
+            if let doc = doc {
+                await stopWalk(walkId: walkId, messageId: doc.messageId, chatId: doc.chatId,
+                               finalDistance: finalDistance, finalDuration: finalDuration)
+            }
+        }
     }
 
     /// Persist pause state on the walk doc (allowed by rules: sitter while status active).

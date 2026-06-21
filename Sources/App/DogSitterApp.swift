@@ -40,6 +40,13 @@ struct DogSitterApp: App {
                 .environmentObject(chatReadStore)
                 .environment(\.theme, themeManager.theme)
                 .preferredColorScheme(themeManager.isDarkMode ? .dark : .light)
+                .onOpenURL { url in
+                    // Tapping the walk Live Activity: dogsitter://walk/{walkId}
+                    guard url.scheme == "dogsitter", url.host == "walk" else { return }
+                    let walkId = url.lastPathComponent
+                    guard !walkId.isEmpty, walkId != "/" else { return }
+                    appState.openWalk(byId: walkId)
+                }
                 .overlay(
                     Group {
                         if themeManager.isAnimating, let targetDark = themeManager.colorSchemeTransitioningToDark {

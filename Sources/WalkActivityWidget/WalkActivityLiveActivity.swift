@@ -28,16 +28,20 @@ struct WalkActivityLiveActivity: Widget {
                         .frame(maxWidth: 96)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    HStack {
-                        Image(systemName: "figure.walk")
-                        Text(distanceText(context.state.distanceKm))
-                        if context.state.isPaused {
-                            Spacer()
-                            Label("מושהה", systemImage: "pause.circle.fill")
-                                .foregroundStyle(.orange)
+                    VStack(spacing: 8) {
+                        HStack {
+                            Image(systemName: "figure.walk")
+                            Text(distanceText(context.state.distanceKm))
+                            if context.state.isPaused {
+                                Spacer()
+                                Label("מושהה", systemImage: "pause.circle.fill")
+                                    .foregroundStyle(.orange)
+                            }
                         }
+                        .font(.caption)
+
+                        WalkActivityControls(state: context.state, walkId: context.attributes.walkId)
                     }
-                    .font(.caption)
                     .environment(\.layoutDirection, .rightToLeft)
                 }
             } compactLeading: {
@@ -75,28 +79,61 @@ struct WalkClockText: View {
 struct WalkLockScreenView: View {
     let context: ActivityViewContext<WalkActivityAttributes>
     var body: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                Circle().fill(brandAccent.opacity(0.15)).frame(width: 44, height: 44)
-                Image(systemName: "pawprint.fill").foregroundStyle(brandAccent)
-            }
-            VStack(alignment: .leading, spacing: 2) {
-                Text(context.attributes.dogName).font(.headline)
-                HStack(spacing: 6) {
-                    Image(systemName: "figure.walk").font(.caption2)
-                    Text(distanceText(context.state.distanceKm)).font(.subheadline)
-                    if context.state.isPaused {
-                        Text("· מושהה").font(.caption).foregroundStyle(.orange)
-                    }
+        VStack(spacing: 12) {
+            HStack(spacing: 14) {
+                ZStack {
+                    Circle().fill(brandAccent.opacity(0.15)).frame(width: 44, height: 44)
+                    Image(systemName: "pawprint.fill").foregroundStyle(brandAccent)
                 }
-                .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(context.attributes.dogName).font(.headline)
+                    HStack(spacing: 6) {
+                        Image(systemName: "figure.walk").font(.caption2)
+                        Text(distanceText(context.state.distanceKm)).font(.subheadline)
+                        if context.state.isPaused {
+                            Text("· מושהה").font(.caption).foregroundStyle(.orange)
+                        }
+                    }
+                    .foregroundStyle(.secondary)
+                }
+                Spacer()
+                WalkClockText(state: context.state)
+                    .font(.system(.title2, design: .rounded).weight(.bold))
+                    .foregroundStyle(brandAccent)
             }
-            Spacer()
-            WalkClockText(state: context.state)
-                .font(.system(.title2, design: .rounded).weight(.bold))
-                .foregroundStyle(brandAccent)
+
+            WalkActivityControls(state: context.state, walkId: context.attributes.walkId)
         }
         .padding()
+    }
+}
+
+/// Pause/Resume + End buttons for the Live Activity (expanded Island + Lock Screen only —
+/// interactive controls aren't allowed in compact/minimal presentations). Each button fires
+/// a LiveActivityIntent that runs in the app process.
+struct WalkActivityControls: View {
+    let state: WalkActivityAttributes.ContentState
+    let walkId: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button(intent: ToggleWalkPauseIntent(walkId: walkId)) {
+                Label(state.isPaused ? "המשך" : "השהה",
+                      systemImage: state.isPaused ? "play.fill" : "pause.fill")
+                    .font(.caption.bold())
+                    .frame(maxWidth: .infinity)
+            }
+            .tint(brandAccent)
+
+            Button(intent: EndWalkIntent(walkId: walkId)) {
+                Label("סיום", systemImage: "stop.fill")
+                    .font(.caption.bold())
+                    .frame(maxWidth: .infinity)
+            }
+            .tint(.red)
+        }
+        .buttonStyle(.bordered)
+        .environment(\.layoutDirection, .rightToLeft)
     }
 }
 
