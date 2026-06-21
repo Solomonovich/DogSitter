@@ -39,6 +39,12 @@ class AppState: ObservableObject {
     @Published var ownerChatGroups: [OwnerChatGroup] = []
     @Published var sitterChats: [ChatWrapper] = []
     @Published var myActivePosts: [Post] = []
+
+    // Sitter tab + deep-link navigation. Lets non-tab UI (e.g. a post card whose
+    // owner the sitter is already chatting with) jump straight into the existing
+    // chat: switch to the messages tab and push that chat.
+    @Published var sitterSelectedTab: Int = 0
+    @Published var pendingChatId: String? = nil
     
     let db = Firestore.firestore()
     
@@ -77,12 +83,18 @@ class AppState: ObservableObject {
         self.chats = []
         self.reviews = []
         self.myActivePosts = []
+        self.sitterChats = []
+        self.ownerChatGroups = []
+        self.sitterSelectedTab = 0
+        self.pendingChatId = nil
         postsListener?.remove()
         chatsListener?.remove()
         myPostsListener?.remove()
         // F-23: clear the shared location tracker so a finished walk's GPS trace
         // does not linger in memory after sign-out / account switch.
         LocationTracker.shared.resetTracking()
+        // End any in-flight Live Activity so it doesn't linger past sign-out.
+        WalkLiveActivityManager.shared.end()
     }
 
     // MARK: - Email Verification (F-18)
@@ -504,10 +516,41 @@ class AppState: ObservableObject {
         try await db.collection("posts").document(postId).delete()
     }
     
+    /// The current sitter's existing chat for a post, if one already exists.
+    /// Drives the "already in contact" badge and the "go to chat" teleport so a
+    /// sitter can never open a second chat for the same post.
+    func existingSitterChat(forPostId postId: String) -> ChatWrapper? {
+        sitterChats.first { $0.chat.postId == postId }
+    }
+
+    /// Teleport the sitter to an existing chat: switch to the messages tab and
+    /// push that chat. The push is deferred one runloop so the messages tab's
+    /// navigation stack is mounted before the programmatic link activates.
+    func openChat(_ chatId: String) {
+        sitterSelectedTab = 1
+        DispatchQueue.main.async { [weak self] in
+            self?.pendingChatId = chatId
+        }
+    }
+
     func expressInterest(in post: Post) async throws {
         guard let postId = post.id, let user = currentUser, let uid = user.id else { return }
+
+        // Idempotency: a sitter may express interest in a given post only once.
+        // Guard against repeated taps (locally and across reopens before the chats
+        // listener catches up) creating duplicate chats and over-counting interest.
+        if existingSitterChat(forPostId: postId) != nil { return }
+        if let existing = try? await db.collection("chats")
+            .whereField("sitterId", isEqualTo: uid)
+            .whereField("postId", isEqualTo: postId)
+            .whereField("archived", isEqualTo: false)
+            .limit(to: 1)
+            .getDocuments(), !existing.documents.isEmpty {
+            return
+        }
+
         let interester = PostInterestedSitter(sitterId: uid, sitterName: user.name, sitterPhotoURL: user.photoURL)
-        
+
         // Add subcollection doc
         try db.collection("posts").document(postId).collection("interested").document(uid).setData(from: interester)
         // Increment global interestedCount
@@ -608,6 +651,49 @@ class AppState: ObservableObject {
         }
     }
     
+    // MARK: - Walk session wiring (background tracker + Live Activity)
+
+    /// Wire the shared tracker so its background sync loop drives Firestore + the Live
+    /// Activity regardless of which screen is on. Call when a walk starts or on re-attach.
+    func beginWalkSession(walkId: String, dogName: String, isSitter: Bool) {
+        let tracker = LocationTracker.shared
+        tracker.isSitter = isSitter
+        tracker.onSync = { [weak self] coords, distanceKm, durationMin in
+            guard let self = self else { return }
+            Task { await self.updateWalkCoordinates(walkId: walkId, coordinates: coords, distance: distanceKm, duration: durationMin) }
+        }
+        tracker.onLiveActivityUpdate = { distanceKm, isPaused, elapsedSeconds in
+            WalkLiveActivityManager.shared.update(distanceKm: distanceKm, isPaused: isPaused, elapsedSeconds: elapsedSeconds)
+        }
+        if isSitter {
+            WalkLiveActivityManager.shared.start(dogName: dogName, walkId: walkId, startTime: Date())
+        }
+    }
+
+    /// Tear down the tracker hooks and end the Live Activity when a walk ends.
+    func endWalkSession() {
+        let tracker = LocationTracker.shared
+        tracker.onSync = nil
+        tracker.onLiveActivityUpdate = nil
+        WalkLiveActivityManager.shared.end()
+    }
+
+    /// Persist pause state on the walk doc (allowed by rules: sitter while status active).
+    func setWalkPaused(walkId: String, isPaused: Bool) async {
+        do {
+            try await db.collection("walks").document(walkId).updateData(["isPaused": isPaused])
+        } catch {
+            dbg("Error setting walk paused: \(error)")
+        }
+    }
+
+    /// Best-effort dog name(s) for a post, used as the Live Activity label.
+    func dogName(forPostId postId: String) -> String {
+        guard let post = posts.first(where: { $0.id == postId }) else { return "טיול" }
+        let names = pets.filter { post.petIds.contains($0.id ?? "") }.map { $0.name }
+        return names.isEmpty ? "טיול" : names.joined(separator: ", ")
+    }
+
     func updateWalkCoordinates(walkId: String, coordinates: [CLLocationCoordinate2D], distance: Double, duration: Double) async {
         let walkCoords = coordinates.map { WalkCoordinate(latitude: $0.latitude, longitude: $0.longitude, timestamp: Timestamp()) }
         let walkCoordsDicts = walkCoords.compactMap { try? Firestore.Encoder().encode($0) }

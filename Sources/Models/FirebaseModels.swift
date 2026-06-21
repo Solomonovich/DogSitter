@@ -235,4 +235,7 @@ struct Walk: Identifiable, Codable {
     var coordinates: [WalkCoordinate]
     var photoURLs: [String]
     var messageId: String
+    /// Optional so existing docs decode. Lives on the walk doc (chat messages are
+    /// immutable) — never encode this as a `status` change.
+    var isPaused: Bool? = nil
 }

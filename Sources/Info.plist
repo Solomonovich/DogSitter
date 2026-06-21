@@ -4,6 +4,12 @@
 <dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>דוגסיטר צריכה גישה למיקום כדי לעקוב אחר מסלול ההליכה</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

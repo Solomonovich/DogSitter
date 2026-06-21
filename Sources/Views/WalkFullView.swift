@@ -50,9 +50,12 @@ struct WalkFullView: View {
         }
     }
 
-    // Upload Timer — held in @State so it isn't recreated on every body evaluation.
-    @State private var uploadTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
-    
+    // Recap shown after stopping; a nudge token to recenter the owner's map; a transient
+    // in-app alert for the owner (out-of-app owner alerts would need push, which is out of scope).
+    @State private var recapWalk: Walk?
+    @State private var recenterToken: Int = 0
+    @State private var ownerAlert: String?
+
     @State private var region = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 32.0853, longitude: 34.7818),
         span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
@@ -66,7 +69,7 @@ struct WalkFullView: View {
                 // Map Area
                 GeometryReader { geo in
                     ZStack(alignment: .bottomTrailing) {
-                        WalkMapView(walk: viewModel.walk, tracker: tracker, region: $region, accentColor: theme.color.accent)
+                        WalkMapView(walk: viewModel.walk, tracker: tracker, region: $region, accentColor: theme.color.accent, isSitter: isSitter, recenterToken: recenterToken)
                             .frame(height: geo.size.height)
 
                         if isSitter && viewModel.walk?.status == "active" {
@@ -81,6 +84,18 @@ struct WalkFullView: View {
                             }
                             .accessibilityLabel("צלם תמונה")
                             .padding()
+                        } else if !isSitter && viewModel.walk?.status == "active" {
+                            Button(action: { recenterToken += 1 }) {
+                                Image(systemName: "location.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundStyle(theme.color.accent)
+                                    .frame(width: 48, height: 48)
+                                    .background(theme.color.surface)
+                                    .clipShape(Circle())
+                                    .shadow(color: .black.opacity(0.2), radius: 5, y: 2)
+                            }
+                            .accessibilityLabel("מרכז על המיקום הנוכחי")
+                            .padding()
                         }
                     }
                 }
@@ -93,9 +108,15 @@ struct WalkFullView: View {
                         InfoBubble {
                             HStack {
                                 if viewModel.walk?.status == "active" {
-                                    Text("פעיל")
-                                        .bold()
-                                        .foregroundStyle(theme.color.success)
+                                    if isWalkPaused {
+                                        Text("מושהה")
+                                            .bold()
+                                            .foregroundStyle(.orange)
+                                    } else {
+                                        Text("פעיל")
+                                            .bold()
+                                            .foregroundStyle(theme.color.success)
+                                    }
                                 } else {
                                     let startTimeStr = viewModel.walk?.startTime.dateValue().formatted(date: .omitted, time: .shortened) ?? ""
                                     let endTimeStr = viewModel.walk?.endTime?.dateValue().formatted(date: .omitted, time: .shortened) ?? ""
@@ -156,15 +177,28 @@ struct WalkFullView: View {
                         }
                         .frame(minHeight: 130)
 
-                        if viewModel.walk?.status == "active" {
-                            Button(action: stopWalk) {
-                                Text("עצור הליכה")
-                                    .bold()
-                                    .foregroundStyle(theme.color.textOnAccent)
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 54)
-                                    .background(theme.color.error)
-                                    .clipShape(RoundedRectangle(cornerRadius: theme.radius.md, style: .continuous))
+                        if isSitter && viewModel.walk?.status == "active" {
+                            HStack(spacing: 12) {
+                                Button(action: togglePause) {
+                                    Label(tracker.isPaused ? "המשך" : "השהה",
+                                          systemImage: tracker.isPaused ? "play.fill" : "pause.fill")
+                                        .bold()
+                                        .foregroundStyle(theme.color.textOnAccent)
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 54)
+                                        .background(tracker.isPaused ? theme.color.success : theme.color.accent)
+                                        .clipShape(RoundedRectangle(cornerRadius: theme.radius.md, style: .continuous))
+                                }
+
+                                Button(action: stopWalk) {
+                                    Text("עצור הליכה")
+                                        .bold()
+                                        .foregroundStyle(theme.color.textOnAccent)
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 54)
+                                        .background(theme.color.error)
+                                        .clipShape(RoundedRectangle(cornerRadius: theme.radius.md, style: .continuous))
+                                }
                             }
                             .padding(.top, 8)
                         }
@@ -242,44 +276,91 @@ struct WalkFullView: View {
             }
         }
         .navigationBarHidden(true)
+        .overlay(alignment: .top) {
+            if let ownerAlert {
+                Text(ownerAlert)
+                    .font(.subheadline).bold()
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color.orange, in: Capsule())
+                    .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
+                    .padding(.top, 70)
+                    .onTapGesture { self.ownerAlert = nil }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(response: 0.4), value: ownerAlert)
         .onAppear {
             viewModel.startListening(walkId: walkId, db: appState.db)
-            Task { 
-                totalHoursToday = await appState.getTotalWalkHoursForChat(chatId: chatId) 
-                
-                // Firestore Syncing logic
+            Task {
+                totalHoursToday = await appState.getTotalWalkHoursForChat(chatId: chatId)
+
+                // Sync from Firestore, then (sitter) re-wire the background driver + Live
+                // Activity and re-attach GPS. The 5s sync now lives in LocationTracker, so
+                // it keeps running once attached even if this screen is dismissed.
                 if let doc = try? await appState.db.collection("walks").document(walkId).getDocument(as: Walk.self) {
                     let firestoreCoordinates = doc.coordinates.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
-                    
-                    // Run state updates on main thread
+
                     await MainActor.run {
                         if firestoreCoordinates.count > tracker.coordinates.count {
-                            tracker.coordinates = firestoreCoordinates
-                            tracker.totalDistance = doc.distance
-                            
-                            // Synchronize elapsed time with the actual start time
-                            let elapsed = Date().timeIntervalSince(doc.startTime.dateValue())
-                            tracker.elapsedSeconds = Int(elapsed)
+                            // Reconstruct paused-adjusted elapsed from the last synced duration.
+                            tracker.restoreRoute(firestoreCoordinates,
+                                                 distanceKm: doc.distance,
+                                                 elapsedSeconds: Int(doc.duration * 60))
                         }
-                        
+
                         if isSitter && doc.status == "active" {
-                            tracker.resumeTracking()
+                            appState.beginWalkSession(walkId: walkId,
+                                                      dogName: appState.dogName(forPostId: doc.postId),
+                                                      isSitter: true)
+                            tracker.reattachTracking()
+                            if doc.isPaused == true { tracker.pauseWalk() }
                         }
                     }
                 }
             }
         }
-        .onReceive(uploadTimer) { _ in
-            if isSitter && viewModel.walk?.status == "active" {
-                Task {
-                    await appState.updateWalkCoordinates(walkId: walkId, coordinates: tracker.coordinates, distance: tracker.totalDistance, duration: activeDuration)
-                }
-            }
-        }
+        .onChange(of: viewModel.walk?.coordinates) { _ in evaluateOwnerAlerts() }
         .sheet(isPresented: $showingImagePicker) {
             ChatImagePicker(sourceType: .camera) { image in
                 Task { await uploadPhoto(image) }
             }
+        }
+        .sheet(item: $recapWalk, onDismiss: { presentationMode.wrappedValue.dismiss() }) { w in
+            WalkRecapView(walk: w)
+        }
+    }
+
+    private var isWalkPaused: Bool {
+        (viewModel.walk?.isPaused ?? false) || tracker.isPaused
+    }
+
+    private func togglePause() {
+        if tracker.isPaused {
+            tracker.resumeWalk()
+            Task { await appState.setWalkPaused(walkId: walkId, isPaused: false) }
+        } else {
+            tracker.pauseWalk()
+            Task { await appState.setWalkPaused(walkId: walkId, isPaused: true) }
+        }
+    }
+
+    /// Owner-only in-app alerts (the app must be open). Out-of-app owner alerts would
+    /// require remote push, which is intentionally out of scope.
+    private func evaluateOwnerAlerts() {
+        guard !isSitter, let walk = viewModel.walk, walk.status == "active" else { return }
+        let coords = walk.coordinates
+        if let first = coords.first, let last = coords.last {
+            let start = CLLocation(latitude: first.latitude, longitude: first.longitude)
+            let current = CLLocation(latitude: last.latitude, longitude: last.longitude)
+            if current.distance(from: start) > 1500 {
+                ownerAlert = "המטפל התרחק מנקודת ההתחלה"
+                return
+            }
+        }
+        if walk.duration > 120 {
+            ownerAlert = "ההליכה נמשכת זמן רב מהרגיל"
         }
     }
     
@@ -295,12 +376,28 @@ struct WalkFullView: View {
     }
     
     private func stopWalk() {
+        let finalDistance = tracker.totalDistance
+        let finalDuration = activeDuration
+        let routeCoords = tracker.coordinates
         tracker.stopTracking()
-        if let msgId = viewModel.walk?.messageId {
-            Task {
-                await appState.stopWalk(walkId: walkId, messageId: msgId, chatId: chatId, finalDistance: tracker.totalDistance, finalDuration: activeDuration)
-                // Dismiss the full-screen view to go back to chat
-                presentationMode.wrappedValue.dismiss()
+        appState.endWalkSession() // ends the Live Activity + clears the driver
+
+        guard var completed = viewModel.walk else {
+            presentationMode.wrappedValue.dismiss()
+            return
+        }
+        let msgId = completed.messageId
+        Task {
+            await appState.stopWalk(walkId: walkId, messageId: msgId, chatId: chatId, finalDistance: finalDistance, finalDuration: finalDuration)
+            await MainActor.run {
+                // Build a completed snapshot for the recap (the live doc updates async).
+                completed.status = "completed"
+                completed.distance = finalDistance
+                completed.duration = finalDuration
+                if !routeCoords.isEmpty {
+                    completed.coordinates = routeCoords.map { WalkCoordinate(latitude: $0.latitude, longitude: $0.longitude, timestamp: Timestamp()) }
+                }
+                recapWalk = completed
             }
         }
     }
@@ -333,32 +430,49 @@ struct WalkMapView: UIViewRepresentable {
     @ObservedObject var tracker: LocationTracker
     @Binding var region: MKCoordinateRegion
     var accentColor: Color = Color(hex: "#4A90D9")
+    var isSitter: Bool = false
+    /// Bumping this from the owner's recenter button forces a re-fit of the map.
+    var recenterToken: Int = 0
 
     func makeUIView(context: Context) -> MKMapView {
         let map = MKMapView()
         map.delegate = context.coordinator
         return map
     }
-    
+
     func updateUIView(_ mapView: MKMapView, context: Context) {
+        _ = recenterToken // referenced so a recenter tap re-runs this and re-fits.
         let walkStatus = walk?.status ?? "active"
-        mapView.showsUserLocation = (walkStatus == "active")
-        
+        // Only the tracking (sitter) device shows the blue user-location dot.
+        mapView.showsUserLocation = isSitter && walkStatus == "active"
+
         mapView.removeOverlays(mapView.overlays)
-        
-        var coords: [CLLocationCoordinate2D] = []
-        if walkStatus == "active" && !tracker.coordinates.isEmpty {
-            coords = tracker.coordinates
+        mapView.removeAnnotations(mapView.annotations.filter { !($0 is MKUserLocation) })
+
+        // Sitter draws the live segmented route (a gap per pause); everyone else (owner /
+        // completed walk) draws the persisted flat route as one polyline.
+        var segments: [[CLLocationCoordinate2D]] = []
+        if isSitter && walkStatus == "active" && !tracker.routeSegments.isEmpty {
+            segments = tracker.routeSegments
         } else if let walkCoords = walk?.coordinates {
-            coords = walkCoords.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
+            segments = [walkCoords.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }]
         }
-        
-        if coords.count > 1 {
-            let polyline = MKPolyline(coordinates: coords, count: coords.count)
-            mapView.addOverlay(polyline)
+
+        for seg in segments where seg.count > 1 {
+            mapView.addOverlay(MKPolyline(coordinates: seg, count: seg.count))
         }
-        
-        updateMapRegion(mapView, coordinates: coords)
+
+        let allCoords = segments.flatMap { $0 }
+
+        // Owner: a live marker at the sitter's latest reported position.
+        if !isSitter && walkStatus == "active", let last = allCoords.last {
+            let ann = MKPointAnnotation()
+            ann.coordinate = last
+            ann.title = "מיקום נוכחי"
+            mapView.addAnnotation(ann)
+        }
+
+        updateMapRegion(mapView, coordinates: allCoords)
     }
     
     func updateMapRegion(_ mapView: MKMapView, coordinates: [CLLocationCoordinate2D]) {

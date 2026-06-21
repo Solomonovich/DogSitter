@@ -135,11 +135,14 @@ struct PreWalkView: View {
                 // F-18: require a verified email to start a walk.
                 guard appState.requireVerifiedEmail() else { return }
                 if let chatId = chat.id {
-                    let _ = await appState.startWalk(chatId: chatId, postId: chat.postId, startAddress: addressString)
-                    
-                    // Push Notification placeholder
-                    print("🐾 הליכה התחילה! (Push Notification sent to owner)")
-                    
+                    if let walkId = await appState.startWalk(chatId: chatId, postId: chat.postId, startAddress: addressString) {
+                        // Drive the background sync + Live Activity from the tracker so it
+                        // survives backgrounding / leaving this screen.
+                        appState.beginWalkSession(walkId: walkId,
+                                                  dogName: appState.dogName(forPostId: chat.postId),
+                                                  isSitter: true)
+                    }
+
                     await MainActor.run {
                         presentationMode.wrappedValue.dismiss()
                     }

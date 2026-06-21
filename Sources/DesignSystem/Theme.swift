@@ -29,4 +29,7 @@ struct Theme: Equatable {
     var spacing: Spacing = .standard
     var radius: Radius = .standard
     var elevation: Elevation = .standard
+    // Visual preferences (cosmetic only, composed in ThemeManager).
+    var backgroundStyle: BackgroundStyle = .solid
+    var avatarShape: AvatarShape = .circle
 }
