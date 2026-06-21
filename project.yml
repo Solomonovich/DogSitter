@@ -64,6 +64,7 @@ targets:
     sources:
       - path: Sources/WalkActivityWidget
       - path: Sources/Shared/WalkActivityAttributes.swift
+      - path: Sources/Shared/WalkActivityIntents.swift
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.shaqed.dogsitter.WalkActivityWidget

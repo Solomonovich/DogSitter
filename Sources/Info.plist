@@ -22,6 +22,16 @@
 				<string>com.googleusercontent.apps.887661968279-p89urg3pd0fividl5q1pe1d323kliio3</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.shaqed.dogsitter.deeplink</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>dogsitter</string>
+			</array>
+		</dict>
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>דוגסיטר צריכה גישה למצלמה כדי לצלם תמונות של החיות שלך</string>

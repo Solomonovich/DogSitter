@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		0D2CC1CEB953DF95E0D97089 /* Typography.swift in Sources */ = {isa = PBXBuildFile; fileRef = D76E44A2F430428833EC1B3C /* Typography.swift */; };
 		0F5219BDB5110020352E1FFE /* CardModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3879D6C1E6B584E7A8F86A78 /* CardModifier.swift */; };
+		11B5C693095C6811C926EBF5 /* WalkActivityIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FC13A7ED86DDAB60A3DBA69 /* WalkActivityIntents.swift */; };
 		13339F971D9A3109B653F215 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A0C96AD402DE51DC12122C5 /* Theme.swift */; };
 		169750C2ECD1416C0EBE0105 /* PostDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCABDB3E964AE0A3A8925071 /* PostDetailView.swift */; };
 		175D44DC96A4E5AE8ED5A776 /* ThemePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E498500C7C8981156C5F14A0 /* ThemePickerView.swift */; };
@@ -55,6 +56,7 @@
 		8B70C0100DFB52B40060CAC1 /* ImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EBC662AFB2649666F8FCCCD /* ImagePicker.swift */; };
 		8DCF8C8C8686523B85613EBC /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = EB747355D215666D781B149C /* Lottie */; };
 		9261F79BE9DFBF35AA6BDFA4 /* Badge.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5DF83CA1A8CFD79A9C79B98 /* Badge.swift */; };
+		9406D15EF145A791BFC52911 /* WalkActivityIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FC13A7ED86DDAB60A3DBA69 /* WalkActivityIntents.swift */; };
 		956EB7FCAF66E7B00F80CA71 /* ScreenBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDF5B83BA64CD3D5B1C3BF3A /* ScreenBackground.swift */; };
 		9740F14BC145A19D00D66278 /* BrowsePostsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61DB9BDB860F3B8C03165EC7 /* BrowsePostsView.swift */; };
 		977E35589D26BE0E44B6E772 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = CD00BA1D0194C8DD6FD4B30F /* GoogleSignInSwift */; };
@@ -134,6 +136,7 @@
 		4C07A85790D63982A3C3F26F /* WalkRecapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkRecapView.swift; sourceTree = "<group>"; };
 		52994C84A4F1D49EF94DA25B /* Spacing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Spacing.swift; sourceTree = "<group>"; };
 		58FFCF1069016C58BD43B3C9 /* LoadingOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingOverlay.swift; sourceTree = "<group>"; };
+		5FC13A7ED86DDAB60A3DBA69 /* WalkActivityIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkActivityIntents.swift; sourceTree = "<group>"; };
 		61DB9BDB860F3B8C03165EC7 /* BrowsePostsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowsePostsView.swift; sourceTree = "<group>"; };
 		6BA09DC4142D6B640BB78EE4 /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
 		6EA572310A954988DC2E59C6 /* CloudinaryHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudinaryHelper.swift; sourceTree = "<group>"; };
@@ -300,6 +303,7 @@
 			isa = PBXGroup;
 			children = (
 				D652B289770430819B9CD5DA /* WalkActivityAttributes.swift */,
+				5FC13A7ED86DDAB60A3DBA69 /* WalkActivityIntents.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -504,6 +508,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				4703B6B850D38AF9201C095C /* WalkActivityAttributes.swift in Sources */,
+				11B5C693095C6811C926EBF5 /* WalkActivityIntents.swift in Sources */,
 				C6F79753F13453323E912827 /* WalkActivityLiveActivity.swift in Sources */,
 				BFA1486032C1E2DA7074BBB7 /* WalkActivityWidgetBundle.swift in Sources */,
 			);
@@ -571,6 +576,7 @@
 				B2FC92F96285F31A0EFBFF1B /* ThemedTextFieldStyle.swift in Sources */,
 				0D2CC1CEB953DF95E0D97089 /* Typography.swift in Sources */,
 				990FB98D7EBC58932E62356A /* WalkActivityAttributes.swift in Sources */,
+				9406D15EF145A791BFC52911 /* WalkActivityIntents.swift in Sources */,
 				4BEABD2BD31FA6E5B2B508C8 /* WalkFullView.swift in Sources */,
 				4C5346879B87A241C2547764 /* WalkLiveActivityManager.swift in Sources */,
 				BDB8C133627EC5DBBCC48D07 /* WalkRecapView.swift in Sources */,
