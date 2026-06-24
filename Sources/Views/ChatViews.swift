@@ -176,7 +176,7 @@ struct OwnerChatRowView: View {
     let wrapper: ChatWrapper
     @State private var showingApproveAlert = false
 
-    private var isUnread: Bool { chatReadStore.isUnread(wrapper.chat) }
+    private var isUnread: Bool { chatReadStore.isUnread(wrapper.chat, currentUserId: appState.currentUser?.id) }
 
     var body: some View {
         HStack(spacing: theme.spacing.sm) {
@@ -275,7 +275,7 @@ struct SitterChatListView: View {
                                 subtitle: wrapper.pets.map { $0.name }.joined(separator: ", "),
                                 preview: wrapper.chat.lastMessage ?? "...",
                                 time: wrapper.chat.lastMessageTime?.dateValue(),
-                                isUnread: chatReadStore.isUnread(wrapper.chat),
+                                isUnread: chatReadStore.isUnread(wrapper.chat, currentUserId: appState.currentUser?.id),
                                 isApproved: wrapper.chat.approved
                             )
                             .card(padding: 0)

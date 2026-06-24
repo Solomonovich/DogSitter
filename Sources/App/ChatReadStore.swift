@@ -35,8 +35,12 @@ final class ChatReadStore: ObservableObject {
     }
 
     /// True when the chat has a message newer than the user's last-seen point.
-    func isUnread(_ chat: Chat) -> Bool {
+    /// Your own last message never counts as unread (the server `lastMessageTime` resolves
+    /// after the local message's pending `@ServerTimestamp`, so it would otherwise show your
+    /// just-sent message as unread).
+    func isUnread(_ chat: Chat, currentUserId: String?) -> Bool {
         guard let id = chat.id, let last = chat.lastMessageTime?.dateValue() else { return false }
+        if let me = currentUserId, let sender = chat.lastMessageSenderId, sender == me { return false }
         let seen = lastSeen[id] ?? baseline
         return last > seen
     }

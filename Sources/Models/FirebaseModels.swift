@@ -162,6 +162,9 @@ struct Chat: Identifiable, Codable {
     @ServerTimestamp var createdAt: Timestamp?
     var lastMessage: String?
     var lastMessageTime: Timestamp?
+    /// Who sent the last message — lets unread tracking ignore your own outgoing messages.
+    /// Optional so existing chat docs decode.
+    var lastMessageSenderId: String?
 }
 
 struct ChatWrapper: Identifiable {

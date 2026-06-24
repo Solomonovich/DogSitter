@@ -390,7 +390,8 @@ class AppState: ObservableObject {
             let _ = try db.collection("chats").document(chatId).collection("messages").addDocument(from: msg)
             try await db.collection("chats").document(chatId).updateData([
                 "lastMessage": text,
-                "lastMessageTime": FieldValue.serverTimestamp()
+                "lastMessageTime": FieldValue.serverTimestamp(),
+                "lastMessageSenderId": uid
             ])
         } catch { dbg("Error sending message: \(error)") }
     }
@@ -406,7 +407,8 @@ class AppState: ObservableObject {
             try db.collection("chats").document(chatId).collection("messages").document(msgId).setData(from: msg)
             try await db.collection("chats").document(chatId).updateData([
                 "lastMessage": "📷 תמונה",
-                "lastMessageTime": FieldValue.serverTimestamp()
+                "lastMessageTime": FieldValue.serverTimestamp(),
+                "lastMessageSenderId": uid
             ])
         } catch { dbg("Error sending photo: \(error)") }
     }
@@ -419,7 +421,8 @@ class AppState: ObservableObject {
             let _ = try db.collection("chats").document(chatId).collection("messages").addDocument(from: msg)
             try await db.collection("chats").document(chatId).updateData([
                 "lastMessage": text,
-                "lastMessageTime": FieldValue.serverTimestamp()
+                "lastMessageTime": FieldValue.serverTimestamp(),
+                "lastMessageSenderId": uid
             ])
         } catch { dbg("Error sending walk message: \(error)") }
     }
@@ -599,7 +602,8 @@ class AppState: ObservableObject {
         let _ = try chatRef.collection("messages").addDocument(from: initialMsg)
         try await chatRef.updateData([
             "lastMessage": "מעוניין לטפל בכלב שלך",
-            "lastMessageTime": FieldValue.serverTimestamp()
+            "lastMessageTime": FieldValue.serverTimestamp(),
+            "lastMessageSenderId": uid
         ])
     }
     
@@ -658,7 +662,8 @@ class AppState: ObservableObject {
             try messageRef.setData(from: walkMsg)
             try await db.collection("chats").document(chatId).updateData([
                 "lastMessage": "🐾 הליכה התחילה!",
-                "lastMessageTime": FieldValue.serverTimestamp()
+                "lastMessageTime": FieldValue.serverTimestamp(),
+                "lastMessageSenderId": uid
             ])
             return walkId
         } catch {
