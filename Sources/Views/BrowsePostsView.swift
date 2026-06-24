@@ -13,7 +13,7 @@ struct BrowsePostsView: View {
     // Filters & sort
     @State private var selectedDateRange: ClosedRange<Date>? = nil
     @State private var selectedPetCount: String = "הכל"
-    @State private var selectedSittingType: SittingType? = nil
+    @State private var selectedPostType: PostType? = nil
     @State private var sortMode: PostSortMode = .recommended
     @State private var showSavedOnly: Bool = false
     @AppStorage("savedPostIDs") private var savedPostIDsData: String = ""
@@ -45,7 +45,7 @@ struct BrowsePostsView: View {
         var n = 0
         if selectedDateRange != nil { n += 1 }
         if selectedPetCount != "הכל" { n += 1 }
-        if selectedSittingType != nil { n += 1 }
+        if selectedPostType != nil { n += 1 }
         if sortMode != .recommended { n += 1 }
         if showSavedOnly { n += 1 }
         return n
@@ -78,8 +78,12 @@ struct BrowsePostsView: View {
     }
 
     private func totalPay(_ post: Post) -> Double {
-        let daysCount = max(1, post.endDate.dateValue().timeIntervalSince(post.startDate.dateValue()) / (60 * 60 * 24))
-        return post.payAmount * (post.payPer == "day" ? daysCount : 1)
+        let span = max(1, post.endDate.dateValue().timeIntervalSince(post.startDate.dateValue()) / (60 * 60 * 24))
+        if post.mappedPostType == .overnight {
+            return post.payAmount * span
+        }
+        // Walking: estimate by price × walks/day × days (for price sorting).
+        return post.payAmount * Double(post.walksPerDay ?? 1) * span
     }
 
     private func computeSortedPosts() -> [Post] {
@@ -97,8 +101,8 @@ struct BrowsePostsView: View {
             posts = posts.filter { String($0.petIds.count) == selectedPetCount || (selectedPetCount == "3+" && $0.petIds.count >= 3) }
         }
 
-        if let type = selectedSittingType {
-            posts = posts.filter { $0.mappedSittingType == type }
+        if let type = selectedPostType {
+            posts = posts.filter { $0.mappedPostType == type }
         }
 
         if showSavedOnly {
@@ -226,7 +230,7 @@ struct BrowsePostsView: View {
                     FilterBarView(
                         selectedDateRange: $selectedDateRange,
                         selectedPetCount: $selectedPetCount,
-                        selectedSittingType: $selectedSittingType,
+                        selectedPostType: $selectedPostType,
                         sortMode: $sortMode,
                         showSavedOnly: $showSavedOnly,
                         activeCount: activeFilterCount
@@ -306,7 +310,7 @@ struct BrowsePostsView: View {
         .onChange(of: selectedPetCount) { _, _ in
             recomputePosts()
         }
-        .onChange(of: selectedSittingType) { _, _ in
+        .onChange(of: selectedPostType) { _, _ in
             recomputePosts()
         }
         .onChange(of: sortMode) { _, _ in
@@ -373,6 +377,23 @@ struct BrowsePostsView: View {
                     // the bar still grabs the handle instead of the cards underneath.
                     .padding(.vertical, -16)
                     .zIndex(1)
+
+                // Quick All / Walking / Overnight type toggle.
+                HStack(spacing: theme.spacing.xs) {
+                    FilterChip(title: "הכל", isSelected: selectedPostType == nil) {
+                        selectedPostType = nil
+                    }
+                    ForEach(PostType.allCases) { type in
+                        FilterChip(title: type.displayName,
+                                   isSelected: selectedPostType == type,
+                                   systemImage: type.iconName) {
+                            selectedPostType = (selectedPostType == type) ? nil : type
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, theme.spacing.md)
+                .padding(.bottom, theme.spacing.sm)
 
                 if showCarousel {
                     if !sortedPosts.isEmpty {

@@ -25,9 +25,9 @@ describe('chat messages', () => {
     await assertFails(setDoc(doc(db, 'chats/c1/messages/m1'), { senderId: 'stranger', senderName: 'X', text: 'hi', type: 'text' }));
   });
 
-  it('lets the OWNER author the "payment" banner', async () => {
+  it('blocks even the OWNER from writing a "payment" banner (backend-only now, F-06 resolved)', async () => {
     const db = authed(env, 'owner1');
-    await assertSucceeds(setDoc(doc(db, 'chats/c1/messages/m1'), { senderId: 'owner1', senderName: 'Owen', text: 'paid ✓', type: 'payment' }));
+    await assertFails(setDoc(doc(db, 'chats/c1/messages/m1'), { senderId: 'owner1', senderName: 'Owen', text: 'paid ✓', type: 'payment' }));
   });
 
   it('blocks a sitter forging a "payment" banner (F-06)', async () => {

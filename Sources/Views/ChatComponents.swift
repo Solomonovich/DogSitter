@@ -137,7 +137,7 @@ struct BookingSummaryChip: View {
 
     private func headline(_ post: Post) -> String {
         let names = pets.map { $0.name }.joined(separator: ", ")
-        let type = post.mappedSittingType.rawValue
+        let type = post.mappedPostType.displayName
         return names.isEmpty ? type : "\(names) · \(type)"
     }
 
@@ -148,7 +148,6 @@ struct BookingSummaryChip: View {
     }
 
     private func pay(_ post: Post) -> String {
-        let per = post.payPer == "hour" ? "לשעה" : "ליום"
-        return "₪\(Int(post.payAmount)) \(per)"
+        return "₪\(Int(post.payAmount)) \(post.mappedPostType.perUnitLabel)"
     }
 }

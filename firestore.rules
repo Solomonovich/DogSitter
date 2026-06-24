@@ -194,14 +194,13 @@ service cloud.firestore {
 
         allow read: if isChatParticipant();
 
-        // senderId cannot be spoofed (F-07); the trusted "payment" banner may only
-        // be authored by the post owner (F-06 interim until the payment Function).
+        // senderId cannot be spoofed (F-07). `payment` messages are NO LONGER
+        // client-writable (F-06 resolved): only the trusted payment backend writes
+        // them, via the Admin SDK which bypasses these rules. Any client attempt to
+        // forge a payment banner is rejected.
         allow create: if isChatParticipant()
           && request.resource.data.senderId == request.auth.uid
-          && (
-            request.resource.data.type != 'payment'
-            || request.auth.uid == chatData().ownerId
-          );
+          && request.resource.data.type != 'payment';
 
         // Messages are immutable from clients (walk status is read live from the
         // walk doc, so the old in-message update is dropped client-side).
@@ -233,6 +232,19 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.auth.uid == request.resource.data.reporterId;
       allow read, update, delete: if false;
+    }
+
+    // ------------------------------------------------------------- payments ---
+    // Financial records are written ONLY by the trusted payment backend (the
+    // charge-walk Edge Function, via the Admin SDK which bypasses these rules).
+    // A participant may READ their own payment records; the disjunction keeps the
+    // app's list queries (filtered by ownerId==uid or sitterId==uid) statically
+    // provable. No client may ever create/update/delete a payment.
+    match /payments/{paymentId} {
+      allow read: if signedIn()
+        && (resource.data.ownerId == request.auth.uid
+            || resource.data.sitterId == request.auth.uid);
+      allow create, update, delete: if false;
     }
 
     // Anything not matched above is denied by default (no catch-all needed).

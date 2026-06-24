@@ -22,6 +22,7 @@
 		3476778EF5352D1F0A3464C4 /* AddressAutocompleteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E18DB6BFD88A81846FA0A2C /* AddressAutocompleteView.swift */; };
 		3B59F5F3ECCF20DBE7D17955 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6C1B934E3C4238E0A55324A /* NotificationManager.swift */; };
 		3CCD42B0ACCEA046CAF4F06C /* CreatePostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3695B4344339980C1ED5ED6 /* CreatePostView.swift */; };
+		44D10D8B333A7967CD17610C /* PaymentHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0108336D1E91947DFA5C807A /* PaymentHistoryView.swift */; };
 		45AA1F9C618E3EFD2E894502 /* Spacing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52994C84A4F1D49EF94DA25B /* Spacing.swift */; };
 		46F12CDE1428358F519D3675 /* WalkActivityWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7457A1471EFA575685D38319 /* WalkActivityWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		4703B6B850D38AF9201C095C /* WalkActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = D652B289770430819B9CD5DA /* WalkActivityAttributes.swift */; };
@@ -65,6 +66,7 @@
 		9E997BF55A507CC5BE94F1FC /* SecurityKit in Frameworks */ = {isa = PBXBuildFile; productRef = C346BA0635C1E6957954F4E8 /* SecurityKit */; };
 		A0BF366626E46B17AC4CD12A /* AppearancePreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C331F4C03E9A0E8FE7B00BA /* AppearancePreferences.swift */; };
 		A0CD29ABCDDF765047BFF982 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78322BB9F2E3FC9FD5974710 /* MainTabView.swift */; };
+		A2638C38774C6AC19F6D8C03 /* PaymentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0313CEBB65967FE4EFAC64 /* PaymentService.swift */; };
 		A3DE2A96DA45B9421B6B3A9A /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48A8661F416DDE4195C62293 /* LoginView.swift */; };
 		ACAA1C02D395D8F3AC496E44 /* SectionHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92FAC1FE8AD0E9DAA1A9EE16 /* SectionHeader.swift */; };
 		AE8E7C082B1D50A45B61C5B6 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = E2FA0E25B75E88405B76781F /* GoogleSignIn */; };
@@ -78,11 +80,14 @@
 		C6F79753F13453323E912827 /* WalkActivityLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D44CB10C0DF9689F35D9D55 /* WalkActivityLiveActivity.swift */; };
 		CC4D2F41E794CF255212014E /* AuthHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A35CA0BE5B9CA8D5176B7 /* AuthHelpers.swift */; };
 		CE552262A4E05E4172B543EC /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B959599B0857204147C52F98 /* ContentView.swift */; };
+		D550D70E310C957352C4CF4E /* PaymentModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E66B585581CE616D53D0968B /* PaymentModels.swift */; };
 		E10455F18F26A1D6895AD89D /* SocialRoleSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C8219BB1F237B61F50E86C5 /* SocialRoleSelectionView.swift */; };
 		E712683834B0593E56C55034 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = DAB3DBCB3F67FDB09B5FD2F1 /* FirebaseFirestore */; };
+		E97D3EEDC11D1D183576ABE9 /* EdgeSwipeBack.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F11EB8ED116EDCEA4AD6707 /* EdgeSwipeBack.swift */; };
 		EB5AD097FD9DDBC41F5696E0 /* PrimaryButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F44B4749D81EEA75514D6EE /* PrimaryButtonStyle.swift */; };
 		F003C257171DE8AAB3FFC368 /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BA09DC4142D6B640BB78EE4 /* EmptyStateView.swift */; };
 		FA87F396EEEC46BEFE8E93D3 /* LocationTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA857488A259617B49500620 /* LocationTracker.swift */; };
+		FCCF554D78708ADCCCE1047B /* PaymentMethodsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED5001E4307C051A7E5519DB /* PaymentMethodsView.swift */; };
 		FEE46E28FA7CC59003ED1BF0 /* MapContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 390A9ED34CB48BCA1A47AFB9 /* MapContainerView.swift */; };
 /* End PBXBuildFile section */
 
@@ -112,6 +117,7 @@
 
 /* Begin PBXFileReference section */
 		00B35865A6F5DE261821719A /* DogSitterApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DogSitterApp.swift; sourceTree = "<group>"; };
+		0108336D1E91947DFA5C807A /* PaymentHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentHistoryView.swift; sourceTree = "<group>"; };
 		05439FF61825F3C0AAD27BD9 /* SecurityKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = SecurityKit; path = SecurityKit; sourceTree = SOURCE_ROOT; };
 		061D674D0628E92CC8F597B9 /* ChatComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatComponents.swift; sourceTree = "<group>"; };
 		0897B76478E5FE981589E1E4 /* SignUpView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignUpView.swift; sourceTree = "<group>"; };
@@ -149,6 +155,7 @@
 		8A057FE1ACC5087DF22771E0 /* Theme+Presets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Theme+Presets.swift"; sourceTree = "<group>"; };
 		8EBC662AFB2649666F8FCCCD /* ImagePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePicker.swift; sourceTree = "<group>"; };
 		8EEA80F47CC3747519F4EA74 /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
+		8F11EB8ED116EDCEA4AD6707 /* EdgeSwipeBack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeSwipeBack.swift; sourceTree = "<group>"; };
 		92FAC1FE8AD0E9DAA1A9EE16 /* SectionHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionHeader.swift; sourceTree = "<group>"; };
 		955C6BACAF7D42FE5F4468B9 /* AuthErrorHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthErrorHandler.swift; sourceTree = "<group>"; };
 		96BEC17FB04C7C8E992A4882 /* PreWalkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreWalkView.swift; sourceTree = "<group>"; };
@@ -173,15 +180,18 @@
 		D652B289770430819B9CD5DA /* WalkActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkActivityAttributes.swift; sourceTree = "<group>"; };
 		D6A93BD2B4DCB4D2FED3E806 /* ProfileAvatar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileAvatar.swift; sourceTree = "<group>"; };
 		D76E44A2F430428833EC1B3C /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
+		DA0313CEBB65967FE4EFAC64 /* PaymentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentService.swift; sourceTree = "<group>"; };
 		DA857488A259617B49500620 /* LocationTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationTracker.swift; sourceTree = "<group>"; };
 		E01B86ADE85C9D91A649AF37 /* PostComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PostComponents.swift; sourceTree = "<group>"; };
 		E104891364332B27CD9DAE2A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		E498500C7C8981156C5F14A0 /* ThemePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemePickerView.swift; sourceTree = "<group>"; };
 		E5A55946CCAABF5720B4EB95 /* icon.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = icon.json; sourceTree = "<group>"; };
 		E5DF83CA1A8CFD79A9C79B98 /* Badge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Badge.swift; sourceTree = "<group>"; };
+		E66B585581CE616D53D0968B /* PaymentModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentModels.swift; sourceTree = "<group>"; };
 		E6DF23585FD14212CBD27ACA /* DestructiveButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DestructiveButtonStyle.swift; sourceTree = "<group>"; };
 		EA9241F3943A9DC214D706CA /* AppIcon.icon */ = {isa = PBXFileReference; path = AppIcon.icon; sourceTree = "<group>"; };
 		EA94710D0A30EB6B2E357946 /* WalkLiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkLiveActivityManager.swift; sourceTree = "<group>"; };
+		ED5001E4307C051A7E5519DB /* PaymentMethodsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentMethodsView.swift; sourceTree = "<group>"; };
 		EDF5B83BA64CD3D5B1C3BF3A /* ScreenBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenBackground.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -280,6 +290,7 @@
 				C80A35CA0BE5B9CA8D5176B7 /* AuthHelpers.swift */,
 				DA857488A259617B49500620 /* LocationTracker.swift */,
 				C6C1B934E3C4238E0A55324A /* NotificationManager.swift */,
+				DA0313CEBB65967FE4EFAC64 /* PaymentService.swift */,
 				B70CF6745F15A1AC7E863C7F /* RouteSnapshotter.swift */,
 				EA94710D0A30EB6B2E357946 /* WalkLiveActivityManager.swift */,
 			);
@@ -367,6 +378,7 @@
 			isa = PBXGroup;
 			children = (
 				C86D88685650E580DE88B304 /* FirebaseModels.swift */,
+				E66B585581CE616D53D0968B /* PaymentModels.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -380,6 +392,7 @@
 				AA302B84A8D72480C4D9F389 /* ChatViews.swift */,
 				B959599B0857204147C52F98 /* ContentView.swift */,
 				A3695B4344339980C1ED5ED6 /* CreatePostView.swift */,
+				8F11EB8ED116EDCEA4AD6707 /* EdgeSwipeBack.swift */,
 				3B07AD794C7E8CC951582621 /* EditPostView.swift */,
 				E5A55946CCAABF5720B4EB95 /* icon.json */,
 				8EBC662AFB2649666F8FCCCD /* ImagePicker.swift */,
@@ -388,6 +401,8 @@
 				78322BB9F2E3FC9FD5974710 /* MainTabView.swift */,
 				390A9ED34CB48BCA1A47AFB9 /* MapContainerView.swift */,
 				C4C752B72E4AD922787ECD20 /* OwnerViews.swift */,
+				0108336D1E91947DFA5C807A /* PaymentHistoryView.swift */,
+				ED5001E4307C051A7E5519DB /* PaymentMethodsView.swift */,
 				E01B86ADE85C9D91A649AF37 /* PostComponents.swift */,
 				CCABDB3E964AE0A3A8925071 /* PostDetailView.swift */,
 				96BEC17FB04C7C8E992A4882 /* PreWalkView.swift */,
@@ -538,6 +553,7 @@
 				4BE5BF6567FE27244B5D069C /* Date+ChatTime.swift in Sources */,
 				68CCFB6A39D6BEB6F4E84E9B /* DestructiveButtonStyle.swift in Sources */,
 				3125DEB88300904DB337D094 /* DogSitterApp.swift in Sources */,
+				E97D3EEDC11D1D183576ABE9 /* EdgeSwipeBack.swift in Sources */,
 				56D6724233495C7241C42955 /* EditPostView.swift in Sources */,
 				53B63122E572DA71B772DAE1 /* Elevation.swift in Sources */,
 				F003C257171DE8AAB3FFC368 /* EmptyStateView.swift in Sources */,
@@ -551,6 +567,10 @@
 				FEE46E28FA7CC59003ED1BF0 /* MapContainerView.swift in Sources */,
 				3B59F5F3ECCF20DBE7D17955 /* NotificationManager.swift in Sources */,
 				5860E8FD504A1006F33C3A13 /* OwnerViews.swift in Sources */,
+				44D10D8B333A7967CD17610C /* PaymentHistoryView.swift in Sources */,
+				FCCF554D78708ADCCCE1047B /* PaymentMethodsView.swift in Sources */,
+				D550D70E310C957352C4CF4E /* PaymentModels.swift in Sources */,
+				A2638C38774C6AC19F6D8C03 /* PaymentService.swift in Sources */,
 				7EA2F7A18EC8DECFD1334427 /* PostComponents.swift in Sources */,
 				169750C2ECD1416C0EBE0105 /* PostDetailView.swift in Sources */,
 				6F4C73F343A2831995B7B86C /* PreWalkView.swift in Sources */,

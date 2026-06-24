@@ -25,8 +25,49 @@ enum SittingType: String, CaseIterable, Identifiable, Codable {
     case dropIn = "ביקורים"
     case daySitting = "יום"
     case walk = "הליכות"
-    
+
     var id: String { self.rawValue }
+}
+
+/// The two first-class post types. `walking` = sitter comes to the owner and takes
+/// the dog out, paid per walk. `overnight` = owner drops the dog at the sitter, paid
+/// per night. Raw values are English/stable; display strings are Hebrew.
+enum PostType: String, CaseIterable, Identifiable, Codable {
+    case walking = "walking"
+    case overnight = "overnight"
+
+    var id: String { self.rawValue }
+
+    var displayName: String {
+        switch self {
+        case .walking:   return "הליכות"
+        case .overnight: return "לינה"
+        }
+    }
+
+    /// SF Symbol used in the type chip / cards.
+    var iconName: String {
+        switch self {
+        case .walking:   return "figure.walk"
+        case .overnight: return "moon.zzz.fill"
+        }
+    }
+
+    /// The pricing unit word (e.g. "₪50 לטיול" / "₪120 ללילה").
+    var perUnitLabel: String {
+        switch self {
+        case .walking:   return "לטיול"
+        case .overnight: return "ללילה"
+        }
+    }
+
+    /// Raw value stored in `Post.payPer` for this type.
+    var payPerRaw: String {
+        switch self {
+        case .walking:   return "walk"
+        case .overnight: return "night"
+        }
+    }
 }
 
 enum PostStatus: String, Codable {
@@ -124,9 +165,12 @@ struct Post: Identifiable, Codable {
     var aloneTime: [String: String]? // Map: petId -> String
     var medication: Bool
     var medicationInfo: String?
+    /// "walking" or "overnight". Optional so legacy docs decode; route logic through
+    /// `mappedPostType`, which falls back from the old `sittingType` for old posts.
+    var postType: String? = nil
     var payAmount: Double
-    var payPer: String // "hour" or "day"
-    var payTiming: String // "perDay" or "endOfStay"
+    var payPer: String // walking: "walk" · overnight: "night" (legacy: "hour"/"day")
+    var payTiming: String // legacy; no longer used (end-of-stay is implied for overnight)
     var pickupType: String? // "dropOff" or "pickUp"
     var pickupAddress: String?
     var interestedCount: Int
@@ -136,6 +180,20 @@ struct Post: Identifiable, Codable {
     // Helper to extract enum safely
     var mappedSittingType: SittingType {
         SittingType(rawValue: sittingType) ?? .dropIn
+    }
+
+    /// The post's type, with a migration fallback for posts created before `postType`
+    /// existed: the old hardcode wrote `sittingType == "לינה"`, so only the explicit
+    /// "הליכות" sitting type maps to walking; everything else is overnight.
+    var mappedPostType: PostType {
+        if let raw = postType, let t = PostType(rawValue: raw) { return t }
+        return sittingType == SittingType.walk.rawValue ? .walking : .overnight
+    }
+
+    /// Number of nights for an overnight stay (booked start → end), min 1.
+    var nightsCount: Int {
+        let secs = endDate.dateValue().timeIntervalSince(startDate.dateValue())
+        return max(1, Int((secs / 86_400).rounded()))
     }
 }
 
@@ -159,6 +217,9 @@ struct Chat: Identifiable, Codable {
     var sitterPhotoURL: String?
     var approved: Bool
     var archived: Bool
+    /// Set by the backend when an overnight stay is charged (end-of-stay). Drives the
+    /// "End stay" button's hidden state. Optional so existing chats decode.
+    var stayCompletedAt: Timestamp? = nil
     @ServerTimestamp var createdAt: Timestamp?
     var lastMessage: String?
     var lastMessageTime: Timestamp?
@@ -207,7 +268,12 @@ struct ChatMessage: Identifiable, Codable {
     var startAddress: String?
     var coordinates: [WalkCoordinate]?
     var photoURLs: [String]?
-    
+
+    // Payment messages (type == "payment") are written by the backend `charge-walk`
+    // function. Optional so existing messages decode.
+    var amountAgorot: Int? = nil
+    var paymentStatus: String? = nil
+
     @ServerTimestamp var createdAt: Timestamp?
 }
 

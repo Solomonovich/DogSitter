@@ -44,8 +44,9 @@ struct PostDetailView: View {
                         Text("סוג שירות")
                             .font(.caption)
                             .foregroundStyle(theme.color.textSecondary)
-                        Text(post.mappedSittingType.rawValue)
+                        Label(post.mappedPostType.displayName, systemImage: post.mappedPostType.iconName)
                             .font(.headline)
+                            .foregroundStyle(post.mappedPostType.chipTint)
                     }
                 }
                 
@@ -157,10 +158,12 @@ struct PostDetailView: View {
                         Text("תשלום")
                             .font(.caption)
                             .foregroundStyle(theme.color.textSecondary)
-                        Text("₪\(Int(post.payAmount)) \(post.payPer == "day" ? "ליום" : "לפרויקט")")
+                        Text("₪\(Int(post.payAmount)) \(post.mappedPostType.perUnitLabel)")
                             .font(theme.typography.title2)
                             .foregroundStyle(theme.color.success)
-                        Text("תשלום יתבצע \(post.payTiming == "perDay" ? "לפי יום" : "בסוף")")
+                        Text(post.mappedPostType == .overnight
+                             ? "החיוב מתבצע בסיום האירוח (\(post.nightsCount) לילות)"
+                             : "החיוב מתבצע על כל טיול")
                             .font(.caption)
                     }
                 }

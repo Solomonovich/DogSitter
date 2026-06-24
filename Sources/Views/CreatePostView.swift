@@ -7,10 +7,11 @@ struct OwnerCreatePostView: View {
     @EnvironmentObject var appState: AppState
     @Environment(\.theme) private var theme
 
+    @State private var postType: PostType = .walking
     @State private var startDate = Date()
     @State private var endDate = Date().addingTimeInterval(86400)
     @State private var selectedPetIds: Set<String> = []
-    
+
     @State private var pickupType = "dropOff"
     @State private var pickupAddress = ""
     
@@ -33,14 +34,26 @@ struct OwnerCreatePostView: View {
     
     @State private var postDescription = ""
     @State private var paymentAmount = ""
-    @State private var paymentPerDay = true
-    @State private var paymentTiming = "לפי יום"
-    
+
     @State private var isPublishing = false
     
     var body: some View {
         NavigationView {
             Form {
+                Section(header: Text("סוג השירות")) {
+                    Picker("סוג", selection: $postType) {
+                        ForEach(PostType.allCases) { type in
+                            Label(type.displayName, systemImage: type.iconName).tag(type)
+                        }
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+                    Text(postType == .walking
+                         ? "המטפל מגיע אליך ומוציא את הכלב. התשלום הוא לפי טיול."
+                         : "אתה מביא את הכלב לבית המטפל. התשלום הוא לפי לילה.")
+                        .font(theme.typography.footnote)
+                        .foregroundStyle(theme.color.textSecondary)
+                }
+
                 Section(header: Text("תיאור")) {
                     ZStack(alignment: .topTrailing) {
                         if postDescription.isEmpty {
@@ -72,15 +85,17 @@ struct OwnerCreatePostView: View {
                     DatePicker("סיום", selection: $endDate, displayedComponents: .date)
                 }
                 
-                Section(header: Text("איסוף או הבאה?")) {
-                    Picker("איסוף", selection: $pickupType) {
-                        Text("בעל הכלב יביא").tag("dropOff")
-                        Text("המטפל יאסוף").tag("pickUp")
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                    
-                    if pickupType == "pickUp" {
-                        AddressAutocompleteField(placeholder: "כתובת לאיסוף", text: $pickupAddress)
+                if postType == .overnight {
+                    Section(header: Text("איסוף או הבאה?")) {
+                        Picker("איסוף", selection: $pickupType) {
+                            Text("בעל הכלב יביא").tag("dropOff")
+                            Text("המטפל יאסוף").tag("pickUp")
+                        }
+                        .pickerStyle(SegmentedPickerStyle())
+
+                        if pickupType == "pickUp" {
+                            AddressAutocompleteField(placeholder: "כתובת לאיסוף", text: $pickupAddress)
+                        }
                     }
                 }
                 
@@ -104,7 +119,7 @@ struct OwnerCreatePostView: View {
                     }
                 }
                 
-                Section(header: Text("אוכל וטיולים")) {
+                Section(header: Text(postType == .walking ? "אוכל וטיולים" : "אוכל")) {
                     Toggle("אני מספק אוכל", isOn: $foodProvided)
                     if foodProvided {
                         Toggle("שקיות מוכנות מראש?", isOn: $preMadeBags)
@@ -116,17 +131,24 @@ struct OwnerCreatePostView: View {
                             }
                         }
                     }
-                    
-                    Stepper("מספר טיולים ביום: \(walksPerDay)", value: $walksPerDay, in: 0...10)
-                    Stepper("משך טיול: \(walkDuration) דק׳", value: $walkDuration, in: 10...120, step: 5)
-                }
-                
-                Section(header: Text("זמן לבד")) {
-                    Picker("כמה זמן הכלב יכול להישאר לבד?", selection: $aloneTime) {
-                        ForEach(aloneOptions, id: \.self) { Text($0) }
+
+                    // The owner specifies how many times to take the dog out only for
+                    // Walking posts (that's the billable unit). Overnight walks are at
+                    // the sitter's discretion and not charged.
+                    if postType == .walking {
+                        Stepper("מספר טיולים ביום: \(walksPerDay)", value: $walksPerDay, in: 1...10)
+                        Stepper("משך טיול: \(walkDuration) דק׳", value: $walkDuration, in: 10...120, step: 5)
                     }
-                    if aloneTime == "הוראות מיוחדות" {
-                        TextField("פרט כאן...", text: $aloneSpecial)
+                }
+
+                if postType == .overnight {
+                    Section(header: Text("זמן לבד")) {
+                        Picker("כמה זמן הכלב יכול להישאר לבד?", selection: $aloneTime) {
+                            ForEach(aloneOptions, id: \.self) { Text($0) }
+                        }
+                        if aloneTime == "הוראות מיוחדות" {
+                            TextField("פרט כאן...", text: $aloneSpecial)
+                        }
                     }
                 }
                 
@@ -139,19 +161,14 @@ struct OwnerCreatePostView: View {
                 
                 Section(header: Text("תשלום")) {
                     HStack {
-                        Text("סכום (₪):")
+                        Text(postType == .walking ? "מחיר לטיול (₪):" : "מחיר ללילה (₪):")
                         TextField("₪", text: $paymentAmount).keyboardType(.numberPad)
                     }
-                    Picker("שיטת תשלום", selection: $paymentPerDay) {
-                        Text("לפי יום").tag(true)
-                        Text("לפי פרויקט מוגדר").tag(false)
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                    
-                    Picker("מתי לשלם?", selection: $paymentTiming) {
-                        Text("לפי יום").tag("לפי יום")
-                        Text("תשלום אחד בסוף").tag("תשלום אחד בסוף")
-                    }
+                    Text(postType == .walking
+                         ? "החיוב מתבצע על כל טיול שמתבצע."
+                         : "החיוב מתבצע בסיום האירוח: מספר הלילות × המחיר.")
+                        .font(theme.typography.footnote)
+                        .foregroundStyle(theme.color.textSecondary)
                 }
                 
                 if let err = errorMessage {
@@ -235,12 +252,15 @@ struct OwnerCreatePostView: View {
                 lon = 34.7818
             }
             
+            let isWalking = postType == .walking
             let finalAloneTime = aloneTime == "הוראות מיוחדות" ? aloneSpecial : aloneTime
             var petAloneMap: [String: String] = [:]
-            for pet in selectedPetIds {
-                petAloneMap[pet] = finalAloneTime
+            if !isWalking {
+                for pet in selectedPetIds {
+                    petAloneMap[pet] = finalAloneTime
+                }
             }
-            
+
             let newPost = Post(
                 ownerId: uid,
                 ownerName: currentUser.name,
@@ -251,20 +271,21 @@ struct OwnerCreatePostView: View {
                 longitude: lon,
                 startDate: Timestamp(date: startDate),
                 endDate: Timestamp(date: endDate),
-                sittingType: SittingType.overnight.rawValue,
+                sittingType: (isWalking ? SittingType.walk : SittingType.overnight).rawValue,
                 description: postDescription.trimmingCharacters(in: .whitespacesAndNewlines),
                 foodProvided: foodProvided,
                 foodSchedule: foodProvided ? (!preMadeBags ? "\(foodGrams) גרם" : "שקיות מוכנות") : nil,
-                walksPerDay: walksPerDay,
-                walkDuration: walkDuration,
-                aloneTime: petAloneMap,
+                walksPerDay: isWalking ? walksPerDay : nil,
+                walkDuration: isWalking ? walkDuration : nil,
+                aloneTime: isWalking ? nil : petAloneMap,
                 medication: medicationNeeded,
                 medicationInfo: medicationNeeded ? medNotes : nil,
+                postType: postType.rawValue,
                 payAmount: Double(paymentAmount) ?? 0,
-                payPer: paymentPerDay ? "day" : "stay",
-                payTiming: paymentTiming == "לפי יום" ? "perDay" : "endOfStay",
-                pickupType: pickupType,
-                pickupAddress: pickupType == "pickUp" ? pickupAddress : nil,
+                payPer: postType.payPerRaw,
+                payTiming: "endOfStay",
+                pickupType: isWalking ? nil : pickupType,
+                pickupAddress: (!isWalking && pickupType == "pickUp") ? pickupAddress : nil,
                 interestedCount: 0,
                 status: PostStatus.open.rawValue
             )

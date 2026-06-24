@@ -35,15 +35,28 @@ struct EditPostView: View {
     
     @State private var postDescription = ""
     @State private var paymentAmount = ""
-    @State private var paymentPerDay = true
-    @State private var paymentTiming = "לפי יום"
-    
+
     @State private var isPublishing = false
     @State private var isDeleting = false
     @State private var showDeleteAlert = false
+
+    /// The post type is fixed at creation (it determines the pricing model), so edit
+    /// shows it read-only rather than letting the owner switch.
+    private var postType: PostType { postToEdit.mappedPostType }
     
     var body: some View {
         Form {
+            Section(header: Text("סוג השירות")) {
+                HStack {
+                    Label(postType.displayName, systemImage: postType.iconName)
+                        .foregroundStyle(theme.color.textPrimary)
+                    Spacer()
+                    Text("לא ניתן לשינוי")
+                        .font(theme.typography.footnote)
+                        .foregroundStyle(theme.color.textSecondary)
+                }
+            }
+
             Section(header: Text("תיאור")) {
                 ZStack(alignment: .topTrailing) {
                     if postDescription.isEmpty {
@@ -75,15 +88,17 @@ struct EditPostView: View {
                 DatePicker("סיום", selection: $endDate, displayedComponents: .date)
             }
             
-            Section(header: Text("איסוף או הבאה?")) {
-                Picker("איסוף", selection: $pickupType) {
-                    Text("בעל הכלב יביא").tag("dropOff")
-                    Text("המטפל יאסוף").tag("pickUp")
-                }
-                .pickerStyle(SegmentedPickerStyle())
-                
-                if pickupType == "pickUp" {
-                    AddressAutocompleteField(placeholder: "כתובת לאיסוף", text: $pickupAddress)
+            if postType == .overnight {
+                Section(header: Text("איסוף או הבאה?")) {
+                    Picker("איסוף", selection: $pickupType) {
+                        Text("בעל הכלב יביא").tag("dropOff")
+                        Text("המטפל יאסוף").tag("pickUp")
+                    }
+                    .pickerStyle(SegmentedPickerStyle())
+
+                    if pickupType == "pickUp" {
+                        AddressAutocompleteField(placeholder: "כתובת לאיסוף", text: $pickupAddress)
+                    }
                 }
             }
             
@@ -107,7 +122,7 @@ struct EditPostView: View {
                 }
             }
             
-            Section(header: Text("אוכל וטיולים")) {
+            Section(header: Text(postType == .walking ? "אוכל וטיולים" : "אוכל")) {
                 Toggle("אני מספק אוכל", isOn: $foodProvided)
                 if foodProvided {
                     Toggle("שקיות מוכנות מראש?", isOn: $preMadeBags)
@@ -119,17 +134,21 @@ struct EditPostView: View {
                         }
                     }
                 }
-                
-                Stepper("מספר טיולים ביום: \(walksPerDay)", value: $walksPerDay, in: 0...10)
-                Stepper("משך טיול: \(walkDuration) דק׳", value: $walkDuration, in: 10...120, step: 5)
-            }
-            
-            Section(header: Text("זמן לבד")) {
-                Picker("כמה זמן הכלב יכול להישאר לבד?", selection: $aloneTime) {
-                    ForEach(aloneOptions, id: \.self) { Text($0) }
+
+                if postType == .walking {
+                    Stepper("מספר טיולים ביום: \(walksPerDay)", value: $walksPerDay, in: 1...10)
+                    Stepper("משך טיול: \(walkDuration) דק׳", value: $walkDuration, in: 10...120, step: 5)
                 }
-                if aloneTime == "הוראות מיוחדות" {
-                    TextField("פרט כאן...", text: $aloneSpecial)
+            }
+
+            if postType == .overnight {
+                Section(header: Text("זמן לבד")) {
+                    Picker("כמה זמן הכלב יכול להישאר לבד?", selection: $aloneTime) {
+                        ForEach(aloneOptions, id: \.self) { Text($0) }
+                    }
+                    if aloneTime == "הוראות מיוחדות" {
+                        TextField("פרט כאן...", text: $aloneSpecial)
+                    }
                 }
             }
             
@@ -142,19 +161,14 @@ struct EditPostView: View {
             
             Section(header: Text("תשלום")) {
                 HStack {
-                    Text("סכום (₪):")
+                    Text(postType == .walking ? "מחיר לטיול (₪):" : "מחיר ללילה (₪):")
                     TextField("₪", text: $paymentAmount).keyboardType(.numberPad)
                 }
-                Picker("שיטת תשלום", selection: $paymentPerDay) {
-                    Text("לפי יום").tag(true)
-                    Text("לפי פרויקט מוגדר").tag(false)
-                }
-                .pickerStyle(SegmentedPickerStyle())
-                
-                Picker("מתי לשלם?", selection: $paymentTiming) {
-                    Text("לפי יום").tag("לפי יום")
-                    Text("תשלום אחד בסוף").tag("תשלום אחד בסוף")
-                }
+                Text(postType == .walking
+                     ? "החיוב מתבצע על כל טיול שמתבצע."
+                     : "החיוב מתבצע בסיום האירוח: מספר הלילות × המחיר.")
+                    .font(theme.typography.footnote)
+                    .foregroundStyle(theme.color.textSecondary)
             }
             
             if let err = errorMessage {
@@ -246,8 +260,6 @@ struct EditPostView: View {
         medNotes = postToEdit.medicationInfo ?? ""
         
         paymentAmount = String(Int(postToEdit.payAmount))
-        paymentPerDay = (postToEdit.payPer == "day")
-        paymentTiming = (postToEdit.payTiming == "perDay") ? "לפי יום" : "תשלום אחד בסוף"
     }
     
     private func saveChanges() {
@@ -289,12 +301,13 @@ struct EditPostView: View {
                     finalFood = preMadeBags ? "שקיות מוכנות מראש" : "\(foodGrams) גרם בארוחה"
                 }
                 
+                let isWalking = postType == .walking
                 let finalAlone = aloneTime == "הוראות מיוחדות" ? aloneSpecial : aloneTime
                 var aloneDict: [String: String] = [:]
-                for pid in selectedPetIds {
-                    aloneDict[pid] = finalAlone
+                if !isWalking {
+                    for pid in selectedPetIds { aloneDict[pid] = finalAlone }
                 }
-                
+
                 var updatedPost = postToEdit
                 updatedPost.description = postDescription.trimmingCharacters(in: .whitespacesAndNewlines)
                 updatedPost.petIds = Array(selectedPetIds)
@@ -302,16 +315,18 @@ struct EditPostView: View {
                 updatedPost.endDate = Timestamp(date: endDate)
                 updatedPost.foodProvided = foodProvided
                 updatedPost.foodSchedule = finalFood.isEmpty ? nil : finalFood
-                updatedPost.walksPerDay = walksPerDay
-                updatedPost.walkDuration = walkDuration
-                updatedPost.aloneTime = aloneDict
+                updatedPost.walksPerDay = isWalking ? walksPerDay : nil
+                updatedPost.walkDuration = isWalking ? walkDuration : nil
+                updatedPost.aloneTime = isWalking ? nil : aloneDict
                 updatedPost.medication = medicationNeeded
                 updatedPost.medicationInfo = medicationNeeded ? medNotes : nil
                 updatedPost.payAmount = Double(paymentAmount) ?? 0
-                updatedPost.payPer = paymentPerDay ? "day" : "stay"
-                updatedPost.payTiming = paymentTiming == "לפי יום" ? "perDay" : "endOfStay"
-                updatedPost.pickupType = pickupType
-                updatedPost.pickupAddress = pickupType == "pickUp" ? pickupAddress : nil
+                // postType is immutable in edit; keep payPer in sync with it.
+                updatedPost.postType = postType.rawValue
+                updatedPost.payPer = postType.payPerRaw
+                updatedPost.payTiming = "endOfStay"
+                updatedPost.pickupType = isWalking ? nil : pickupType
+                updatedPost.pickupAddress = (!isWalking && pickupType == "pickUp") ? pickupAddress : nil
                 updatedPost.latitude = lat
                 updatedPost.longitude = lon
                 

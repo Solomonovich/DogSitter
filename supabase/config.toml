@@ -1,0 +1,30 @@
+# Supabase config for DogSitter payments backend.
+# App data stays in Firebase/Firestore; this project is ONLY the trusted payment
+# compute (Edge Functions) + the authoritative ledger (Postgres).
+project_id = "dogsitter-payments"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+# Auth is handled by Firebase (we verify the Firebase ID token ourselves inside each
+# function), so Supabase's own JWT gate is disabled. The anon key is still required by
+# the gateway and ships in the app (it is a public key).
+[functions.charge-walk]
+verify_jwt = false
+
+[functions.charge-stay]
+verify_jwt = false
+
+[functions.payment-methods]
+verify_jwt = false
+
+[functions.get-balance]
+verify_jwt = false

@@ -442,11 +442,10 @@ class AppState: ObservableObject {
                 "approvedSitterId": sitterId
             ])
 
-            // The "payment passed" banner is authored by the owner (the Firestore
-            // rules only allow the post owner to write a `payment` message — a sitter
-            // can no longer forge it). It renders centered regardless of sender, so
-            // the chat looks identical to before.
-            let sysMsg = ChatMessage(senderId: ownerUid, senderName: owner.name, text: "התשלום עבר בהצלחה ✓", type: "payment")
+            // Approval just confirms the booking now — it no longer fakes a payment.
+            // Real `payment` messages are written only by the trusted backend, per
+            // completed walk (see PaymentService / the charge-walk Edge Function).
+            let sysMsg = ChatMessage(senderId: ownerUid, senderName: owner.name, text: "ההזמנה אושרה ✓", type: "text")
             let _ = try db.collection("chats").document(chatId).collection("messages").addDocument(from: sysMsg)
         } catch { dbg("Error approving chat: \(error)") }
     }
@@ -783,6 +782,11 @@ class AppState: ObservableObject {
             // msg.*), so the previous duplicate write to the chat message is dropped.
             // Messages are immutable under the new rules; display is unaffected.
             _ = messageId
+
+            // Charge per completed walk. The backend re-verifies the walk against
+            // Firestore and is idempotent on walkId, so this is safe to fire-and-forget
+            // (and no-ops when payments aren't configured yet).
+            Task { await PaymentService.shared.chargeForWalk(walkId: walkId) }
         } catch {
             dbg("Error stopping walk: \(error)")
         }

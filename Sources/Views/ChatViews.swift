@@ -297,6 +297,7 @@ struct SitterChatListView: View {
 struct ChatDetailView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var chatReadStore: ChatReadStore
+    @EnvironmentObject var paymentService: PaymentService
     @Environment(\.theme) private var theme
     let chatWrapper: ChatWrapper
 
@@ -338,13 +339,24 @@ struct ChatDetailView: View {
     
     @State private var showingPreWalk = false
     @State private var walkToOpen: WalkIdentifier? = nil
-    
+
+    @State private var showEndStayConfirm = false
+
     var otherName: String {
         appState.currentUserRole == .owner ? chatWrapper.chat.sitterName : chatWrapper.chat.ownerName
     }
-    
+
     var hasActiveWalk: Bool {
         messages.contains { $0.type == "walk" && $0.status == "active" }
+    }
+
+    /// The sitter can end an approved overnight stay (which charges per night) once,
+    /// while it hasn't been completed yet.
+    var canEndStay: Bool {
+        appState.currentUserRole == .sitter
+            && chatWrapper.chat.approved
+            && chatWrapper.chat.stayCompletedAt == nil
+            && chatWrapper.post?.mappedPostType == .overnight
     }
     
     var body: some View {
@@ -505,6 +517,26 @@ struct ChatDetailView: View {
                                     .transition(.move(edge: .bottom).combined(with: .opacity))
                                 }
 
+                                if canEndStay {
+                                    Button(action: {
+                                        showAttachmentMenu = false
+                                        showEndStayConfirm = true
+                                    }) {
+                                        HStack {
+                                            Text("סיום אירוח וחיוב")
+                                                .foregroundStyle(theme.color.textPrimary)
+                                            Image(systemName: "moon.zzz.fill")
+                                                .foregroundStyle(theme.color.accent)
+                                        }
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 10)
+                                        .background(theme.color.surface)
+                                        .clipShape(RoundedRectangle(cornerRadius: theme.radius.lg, style: .continuous))
+                                        .shadow(color: .black.opacity(0.1), radius: 5, y: 2)
+                                    }
+                                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                                }
+
                             Button(action: {
                                 showAttachmentMenu = false
                                 showingSourceDialog = true
@@ -558,6 +590,20 @@ struct ChatDetailView: View {
             }
         }
         .screenBackground()
+        .confirmationDialog(
+            "סיום האירוח",
+            isPresented: $showEndStayConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("סיים וחייב") {
+                if let chatId = chatWrapper.chat.id {
+                    Task { await paymentService.endStay(chatId: chatId) }
+                }
+            }
+            Button("ביטול", role: .cancel) {}
+        } message: {
+            Text("פעולה זו תסיים את האירוח ותחייב את בעל הכלב לפי מספר הלילות.")
+        }
         .confirmationDialog(
             "בחר תמונה",
             isPresented: $showingSourceDialog,
@@ -623,6 +669,7 @@ struct ChatDetailView: View {
         .navigationTitle(otherName)
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
+        .swipeToGoBack { presentationMode.wrappedValue.dismiss() }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button(action: { presentationMode.wrappedValue.dismiss() }) {
@@ -758,18 +805,7 @@ struct ChatBubbleView: View {
 
     var body: some View {
         if msg.type == "payment" {
-            VStack(spacing: 2) {
-                Text(msg.text)
-                    .font(theme.typography.subheadline)
-                    .fontWeight(.bold)
-                    .padding(.horizontal, theme.spacing.md)
-                    .padding(.vertical, theme.spacing.xs)
-                    .background(theme.color.success.opacity(0.18))
-                    .foregroundStyle(theme.color.success)
-                    .clipShape(RoundedRectangle(cornerRadius: theme.radius.card, style: .continuous))
-                timestamp
-            }
-            .frame(maxWidth: .infinity, alignment: .center)
+            paymentBubble
         } else if msg.type == "walk" {
             WalkBubbleContent(msg: msg, isMine: isMine, onTap: {
                 if let wid = msg.walkId {
@@ -813,6 +849,27 @@ struct ChatBubbleView: View {
                 if !isMine { Spacer() }
             }
         }
+    }
+
+    // Backend-authored payment banner. Centered, tinted by status. Legacy payment
+    // messages (no paymentStatus) default to "succeeded" → green, as before.
+    private var paymentBubble: some View {
+        let status = PaymentStatus(rawValue: msg.paymentStatus ?? "succeeded") ?? .succeeded
+        let tint = status == .failed ? theme.color.error : theme.color.success
+        return VStack(spacing: 2) {
+            HStack(spacing: 6) {
+                Image(systemName: status == .failed ? "xmark.seal.fill" : "checkmark.seal.fill")
+                Text(msg.text).fontWeight(.bold)
+            }
+            .font(theme.typography.subheadline)
+            .padding(.horizontal, theme.spacing.md)
+            .padding(.vertical, theme.spacing.xs)
+            .background(tint.opacity(0.18))
+            .foregroundStyle(tint)
+            .clipShape(RoundedRectangle(cornerRadius: theme.radius.card, style: .continuous))
+            timestamp
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
     }
 
     @ViewBuilder private var timestamp: some View {

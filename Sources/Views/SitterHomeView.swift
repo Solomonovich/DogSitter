@@ -5,7 +5,7 @@ struct SitterHomeView: View {
     @StateObject private var searchService = AddressSearchService()
     
     @State private var addressSearch = ""
-    @State private var selectedTypes: Set<SittingType> = []
+    @State private var selectedTypes: Set<PostType> = []
     
     var body: some View {
         NavigationView {
@@ -54,7 +54,7 @@ struct SitterHomeView: View {
                         // Sitting Types Multi-select
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack {
-                                ForEach(SittingType.allCases) { type in
+                                ForEach(PostType.allCases) { type in
                                     Button(action: {
                                         if selectedTypes.contains(type) {
                                             selectedTypes.remove(type)
@@ -62,7 +62,7 @@ struct SitterHomeView: View {
                                             selectedTypes.insert(type)
                                         }
                                     }) {
-                                        Text(type.rawValue)
+                                        Label(type.displayName, systemImage: type.iconName)
                                             .padding(.horizontal, 16)
                                             .padding(.vertical, 8)
                                             .background(selectedTypes.contains(type) ? Color.blue : Color(.systemGray5))
@@ -128,13 +128,14 @@ struct SitterHomeView: View {
                             .padding(.horizontal)
                         
                         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                            ForEach(SittingType.allCases) { type in
+                            ForEach(PostType.allCases) { type in
                                 VStack(spacing: 12) {
-                                    Text(type.rawValue)
+                                    Label(type.displayName, systemImage: type.iconName)
                                         .font(.headline)
-                                    
+                                        .foregroundStyle(type.chipTint)
+
                                     NavigationLink(destination: BrowsePostsView()) { // Should pass filter
-                                        Text("חפש \(type.rawValue)")
+                                        Text("חפש \(type.displayName)")
                                             .font(.caption.bold())
                                             .padding(8)
                                             .background(Color.blue.opacity(0.2))

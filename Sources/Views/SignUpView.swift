@@ -87,6 +87,7 @@ struct SignUpView: View {
         .loadingOverlay(isLoading, size: 100)
         .environment(\.layoutDirection, .rightToLeft)
         .navigationBarHidden(true)
+        .swipeToGoBack { presentationMode.wrappedValue.dismiss() }
     }
     
     private func handleSignUp() {

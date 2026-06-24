@@ -105,6 +105,13 @@ struct ProfileSettingsCard: View {
             ProfileLinkRow(icon: "paintbrush.fill", title: "מראה ותצוגה") {
                 ThemePickerView()
             }
+
+            Divider().overlay(theme.color.separator)
+                .padding(.vertical, theme.spacing.xs)
+
+            ProfileLinkRow(icon: "creditcard.fill", title: "תשלומים") {
+                PaymentHistoryView()
+            }
         }
         .card()
     }

@@ -106,6 +106,7 @@ struct PreWalkView: View {
             .safeAreaInset(edge: .top) { Color.clear.frame(height: 0) } // Adjust for safe area if needed
         }
         .navigationBarHidden(true)
+        .swipeToGoBack { presentationMode.wrappedValue.dismiss() }
         .onAppear {
             tracker.resetTracking()
             tracker.requestPermission()

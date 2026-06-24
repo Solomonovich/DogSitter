@@ -54,6 +54,40 @@ struct FilterChip: View {
     }
 }
 
+// MARK: - Post type chip
+
+extension PostType {
+    /// Fixed identity color per type (stable across themes/palettes): walking = green,
+    /// overnight = indigo. Used by the chip and the browse type toggle.
+    var chipTint: Color {
+        switch self {
+        case .walking:   return Color(red: 0.17, green: 0.62, blue: 0.36)
+        case .overnight: return Color(red: 0.36, green: 0.34, blue: 0.80)
+        }
+    }
+}
+
+/// An at-a-glance Walking-vs-Overnight chip (icon + label + color). The single visual
+/// the user sees on every post surface to tell the two types apart.
+struct PostTypeChip: View {
+    @Environment(\.theme) private var theme
+    let type: PostType
+    var iconOnly: Bool = false
+
+    var body: some View {
+        HStack(spacing: theme.spacing.xxs) {
+            Image(systemName: type.iconName)
+            if !iconOnly { Text(type.displayName) }
+        }
+        .font(theme.typography.captionBold)
+        .foregroundStyle(type.chipTint)
+        .padding(.horizontal, theme.spacing.sm)
+        .padding(.vertical, theme.spacing.xxs)
+        .background(type.chipTint.opacity(0.15))
+        .clipShape(Capsule())
+    }
+}
+
 // MARK: - Post card
 
 /// The headline card for a post: owner identity, sitting type, distance, key
@@ -139,7 +173,7 @@ struct PostCardBanner: View {
                     .lineLimit(1)
 
                 HStack(spacing: theme.spacing.xxs) {
-                    Badge(text: post.mappedSittingType.rawValue, kind: .accent)
+                    PostTypeChip(type: post.mappedPostType)
                     if alreadyInContact {
                         Badge(text: "בקשר", kind: .success, systemImage: "checkmark.bubble.fill")
                     }
@@ -211,17 +245,30 @@ struct PostCardBanner: View {
     // MARK: Pay
 
     private var payRow: some View {
-        let interval = post.payPer == "day" ? "ללילה" : "לשעה"
-        let daysCount = max(1, post.endDate.dateValue().timeIntervalSince(post.startDate.dateValue()) / (60 * 60 * 24))
-        let total = post.payAmount * (post.payPer == "day" ? daysCount : 1)
+        let type = post.mappedPostType
+        let span = max(1, Int((post.endDate.dateValue().timeIntervalSince(post.startDate.dateValue()) / 86_400).rounded()))
+        let perUnit = Int(post.payAmount)
+        // Overnight shows the exact stay total (nights × rate); Walking shows an
+        // estimate (price × walks/day × days) since the real total depends on how
+        // many walks actually happen.
+        let totalText: String? = {
+            if type == .overnight {
+                return "סה״כ ₪\(perUnit * span)"
+            } else if let w = post.walksPerDay, w > 0 {
+                return "≈ ₪\(perUnit * w * span)"
+            }
+            return nil
+        }()
 
         return HStack {
             Spacer(minLength: 0)
             HStack(spacing: theme.spacing.xs) {
-                Text("₪\(Int(post.payAmount))/\(interval)")
-                Image(systemName: "arrow.left")
-                    .font(theme.typography.caption.weight(.bold))
-                Text("סה״כ ₪\(Int(total))")
+                Text("₪\(perUnit) \(type.perUnitLabel)")
+                if let totalText {
+                    Image(systemName: "arrow.left")
+                        .font(theme.typography.caption.weight(.bold))
+                    Text(totalText)
+                }
             }
             .font(theme.typography.subheadline.weight(.bold))
             .foregroundStyle(theme.color.textOnAccent)
@@ -359,7 +406,7 @@ struct FilterBarView: View {
     @Environment(\.theme) private var theme
     @Binding var selectedDateRange: ClosedRange<Date>?
     @Binding var selectedPetCount: String
-    @Binding var selectedSittingType: SittingType?
+    @Binding var selectedPostType: PostType?
     @Binding var sortMode: PostSortMode
     @Binding var showSavedOnly: Bool
     let activeCount: Int
@@ -381,7 +428,7 @@ struct FilterBarView: View {
     private var panel: some View {
         VStack(alignment: .trailing, spacing: theme.spacing.sm) {
             SortFilterView(sortMode: $sortMode)
-            SittingTypeFilterView(selectedSittingType: $selectedSittingType)
+            PostTypeFilterView(selectedPostType: $selectedPostType)
             PetCountFilterView(selectedPetCount: $selectedPetCount, petCounts: petCounts)
             DatesFilterView(selectedDateRange: $selectedDateRange, showCalendar: $showCalendar)
             savedToggle
@@ -469,23 +516,25 @@ struct SortFilterView: View {
     }
 }
 
-struct SittingTypeFilterView: View {
+struct PostTypeFilterView: View {
     @Environment(\.theme) private var theme
-    @Binding var selectedSittingType: SittingType?
+    @Binding var selectedPostType: PostType?
 
     var body: some View {
         VStack(alignment: .trailing, spacing: theme.spacing.xxs) {
-            Text("סוג טיפול")
+            Text("סוג השירות")
                 .font(theme.typography.captionBold)
                 .foregroundStyle(theme.color.textPrimary)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: theme.spacing.xs) {
-                    FilterChip(title: "הכל", isSelected: selectedSittingType == nil) {
-                        withAnimation(.easeInOut(duration: 0.2)) { selectedSittingType = nil }
+                    FilterChip(title: "הכל", isSelected: selectedPostType == nil) {
+                        withAnimation(.easeInOut(duration: 0.2)) { selectedPostType = nil }
                     }
-                    ForEach(SittingType.allCases) { type in
-                        FilterChip(title: type.rawValue, isSelected: selectedSittingType == type) {
-                            withAnimation(.easeInOut(duration: 0.2)) { selectedSittingType = type }
+                    ForEach(PostType.allCases) { type in
+                        FilterChip(title: type.displayName,
+                                   isSelected: selectedPostType == type,
+                                   systemImage: type.iconName) {
+                            withAnimation(.easeInOut(duration: 0.2)) { selectedPostType = type }
                         }
                     }
                 }

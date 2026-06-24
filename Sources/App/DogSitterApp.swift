@@ -28,6 +28,7 @@ struct DogSitterApp: App {
     @StateObject private var appState = AppState()
     @StateObject private var themeManager = ThemeManager()
     @StateObject private var chatReadStore = ChatReadStore()
+    @StateObject private var paymentService = PaymentService.shared
     
     var body: some Scene {
         WindowGroup {
@@ -38,6 +39,7 @@ struct DogSitterApp: App {
                 .environmentObject(appState)
                 .environmentObject(themeManager)
                 .environmentObject(chatReadStore)
+                .environmentObject(paymentService)
                 .environment(\.theme, themeManager.theme)
                 .preferredColorScheme(themeManager.isDarkMode ? .dark : .light)
                 .onOpenURL { url in

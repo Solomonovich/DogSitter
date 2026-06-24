@@ -276,6 +276,7 @@ struct WalkFullView: View {
             }
         }
         .navigationBarHidden(true)
+        .swipeToGoBack { presentationMode.wrappedValue.dismiss() }
         .overlay(alignment: .top) {
             if let ownerAlert {
                 Text(ownerAlert)
