@@ -24,14 +24,19 @@ Deno.serve(async (req) => {
   const db = serviceClient();
   const { data, error } = await db
     .from("balances")
-    .select("owner_charged_agorot, sitter_accrued_agorot, currency")
+    .select("owner_charged_agorot, sitter_accrued_agorot, sitter_paid_out_agorot, owner_refunded_agorot, currency")
     .eq("user_id", uid)
     .maybeSingle();
   if (error) return json({ error: error.message }, 500);
 
+  const accrued = Number(data?.sitter_accrued_agorot ?? 0);
+  const paidOut = Number(data?.sitter_paid_out_agorot ?? 0);
   return json({
     ownerChargedAgorot: Number(data?.owner_charged_agorot ?? 0),
-    sitterAccruedAgorot: Number(data?.sitter_accrued_agorot ?? 0),
+    ownerRefundedAgorot: Number(data?.owner_refunded_agorot ?? 0),
+    sitterAccruedAgorot: accrued,
+    sitterPaidOutAgorot: paidOut,
+    sitterAvailableAgorot: Math.max(0, accrued - paidOut),
     currency: data?.currency ?? "ILS",
   }, 200);
 });

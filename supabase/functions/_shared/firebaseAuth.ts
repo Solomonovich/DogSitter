@@ -49,3 +49,10 @@ export async function verifyFirebaseToken(req: Request): Promise<FirebaseUser> {
 }
 
 export class AuthError extends Error {}
+
+/** Whether a uid is a platform admin (ADMIN_UIDS = comma-separated Firebase uids). */
+export function isAdmin(uid: string): boolean {
+  const admins = (Deno.env.get("ADMIN_UIDS") ?? "")
+    .split(",").map((s) => s.trim()).filter(Boolean);
+  return admins.includes(uid);
+}

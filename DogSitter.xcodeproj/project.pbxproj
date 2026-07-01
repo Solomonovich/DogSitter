@@ -14,19 +14,25 @@
 		169750C2ECD1416C0EBE0105 /* PostDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCABDB3E964AE0A3A8925071 /* PostDetailView.swift */; };
 		175D44DC96A4E5AE8ED5A776 /* ThemePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E498500C7C8981156C5F14A0 /* ThemePickerView.swift */; };
 		1B8A91A93E2D061EC7B6740E /* CloudinaryHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EA572310A954988DC2E59C6 /* CloudinaryHelper.swift */; };
+		1BC9C47138359F9A87A5F4D0 /* StripePaymentsUI in Frameworks */ = {isa = PBXBuildFile; productRef = E7433F0E312DADAA7BFFF3CF /* StripePaymentsUI */; };
 		1C6B40917EE3C29C6C11B5C3 /* RouteSnapshotter.swift in Sources */ = {isa = PBXBuildFile; fileRef = B70CF6745F15A1AC7E863C7F /* RouteSnapshotter.swift */; };
 		289AA4990B8C099A15CA12ED /* FirebaseModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86D88685650E580DE88B304 /* FirebaseModels.swift */; };
+		291E19735B68E8E64CCE0C63 /* StripeApplePay in Frameworks */ = {isa = PBXBuildFile; productRef = 7BD785F9158D588F9FFF7307 /* StripeApplePay */; };
+		297FF1E725D29266D6E5C980 /* PayoutHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94186DC17830C31E51F4510E /* PayoutHistoryView.swift */; };
 		2E570FCC717DBE7F7A496E69 /* ProfileAvatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6A93BD2B4DCB4D2FED3E806 /* ProfileAvatar.swift */; };
 		3125DEB88300904DB337D094 /* DogSitterApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00B35865A6F5DE261821719A /* DogSitterApp.swift */; };
 		32F84FEEDBEBF64FA160A8E1 /* AddressSearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0CE113F642431B82F82F801 /* AddressSearchService.swift */; };
 		3476778EF5352D1F0A3464C4 /* AddressAutocompleteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E18DB6BFD88A81846FA0A2C /* AddressAutocompleteView.swift */; };
 		3B59F5F3ECCF20DBE7D17955 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6C1B934E3C4238E0A55324A /* NotificationManager.swift */; };
 		3CCD42B0ACCEA046CAF4F06C /* CreatePostView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3695B4344339980C1ED5ED6 /* CreatePostView.swift */; };
+		3F4CDBA3274DBF03A91817DC /* GrowHostedPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B7BD8F8AB840B93022CD6D1 /* GrowHostedPageView.swift */; };
 		44D10D8B333A7967CD17610C /* PaymentHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0108336D1E91947DFA5C807A /* PaymentHistoryView.swift */; };
 		45AA1F9C618E3EFD2E894502 /* Spacing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52994C84A4F1D49EF94DA25B /* Spacing.swift */; };
 		46F12CDE1428358F519D3675 /* WalkActivityWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7457A1471EFA575685D38319 /* WalkActivityWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		4703B6B850D38AF9201C095C /* WalkActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = D652B289770430819B9CD5DA /* WalkActivityAttributes.swift */; };
 		47382124E463F45B3F9880B6 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 399456D5AC5F8B0594AE715F /* GoogleService-Info.plist */; };
+		4A305430F060B293BEDC54C8 /* SecurityKit in Frameworks */ = {isa = PBXBuildFile; productRef = C346BA0635C1E6957954F4E8 /* SecurityKit */; };
+		4B81D131CF69B471CD99CF6F /* CardCaptureModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3F758B9609BB4C047C45785 /* CardCaptureModifier.swift */; };
 		4BE5BF6567FE27244B5D069C /* Date+ChatTime.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B77BA9A80D61073AAB0DE28 /* Date+ChatTime.swift */; };
 		4BEABD2BD31FA6E5B2B508C8 /* WalkFullView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C33ADE18E53FB3290E8FC041 /* WalkFullView.swift */; };
 		4C5346879B87A241C2547764 /* WalkLiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA94710D0A30EB6B2E357946 /* WalkLiveActivityManager.swift */; };
@@ -55,15 +61,18 @@
 		89A5FDE1F8C08BCBC315CC32 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 1CCFF6FCA40FAA5CE29461C6 /* FirebaseAnalytics */; };
 		89EF690DDC71512634F90B4E /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 612941E548241C26DEDAA206 /* FirebaseAuth */; };
 		8B70C0100DFB52B40060CAC1 /* ImagePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EBC662AFB2649666F8FCCCD /* ImagePicker.swift */; };
+		8CBC7E1C68942DB4C5D070FD /* StripePayments in Frameworks */ = {isa = PBXBuildFile; productRef = ADDD964C95B4B1AE05069D7D /* StripePayments */; };
 		8DCF8C8C8686523B85613EBC /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = EB747355D215666D781B149C /* Lottie */; };
 		9261F79BE9DFBF35AA6BDFA4 /* Badge.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5DF83CA1A8CFD79A9C79B98 /* Badge.swift */; };
 		9406D15EF145A791BFC52911 /* WalkActivityIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FC13A7ED86DDAB60A3DBA69 /* WalkActivityIntents.swift */; };
 		956EB7FCAF66E7B00F80CA71 /* ScreenBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDF5B83BA64CD3D5B1C3BF3A /* ScreenBackground.swift */; };
 		9740F14BC145A19D00D66278 /* BrowsePostsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61DB9BDB860F3B8C03165EC7 /* BrowsePostsView.swift */; };
 		977E35589D26BE0E44B6E772 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = CD00BA1D0194C8DD6FD4B30F /* GoogleSignInSwift */; };
+		97BCE823DC02D725D9B1EB4B /* StripeCardFormSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFD867AF9BEE337E3A8517EF /* StripeCardFormSheet.swift */; };
+		98668646C560F523E1EA28EE /* CardCaptureCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65B71D8BD428FD09B78CF8C5 /* CardCaptureCoordinator.swift */; };
 		990FB98D7EBC58932E62356A /* WalkActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = D652B289770430819B9CD5DA /* WalkActivityAttributes.swift */; };
 		9A7B2A11A8F2F01F40DB4E3B /* CachedAsyncImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA0A2ACD938D29DBB6A85C82 /* CachedAsyncImage.swift */; };
-		9E997BF55A507CC5BE94F1FC /* SecurityKit in Frameworks */ = {isa = PBXBuildFile; productRef = C346BA0635C1E6957954F4E8 /* SecurityKit */; };
+		9E997BF55A507CC5BE94F1FC /* StripePaymentSheet in Frameworks */ = {isa = PBXBuildFile; productRef = 60F8608D1AB92E2FA3F8DFAC /* StripePaymentSheet */; };
 		A0BF366626E46B17AC4CD12A /* AppearancePreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C331F4C03E9A0E8FE7B00BA /* AppearancePreferences.swift */; };
 		A0CD29ABCDDF765047BFF982 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78322BB9F2E3FC9FD5974710 /* MainTabView.swift */; };
 		A2638C38774C6AC19F6D8C03 /* PaymentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0313CEBB65967FE4EFAC64 /* PaymentService.swift */; };
@@ -89,6 +98,7 @@
 		FA87F396EEEC46BEFE8E93D3 /* LocationTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA857488A259617B49500620 /* LocationTracker.swift */; };
 		FCCF554D78708ADCCCE1047B /* PaymentMethodsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED5001E4307C051A7E5519DB /* PaymentMethodsView.swift */; };
 		FEE46E28FA7CC59003ED1BF0 /* MapContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 390A9ED34CB48BCA1A47AFB9 /* MapContainerView.swift */; };
+		FF966C98A754B80C6C13837E /* ReceiptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7339B327CC6319328141D0C5 /* ReceiptView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -144,11 +154,14 @@
 		58FFCF1069016C58BD43B3C9 /* LoadingOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadingOverlay.swift; sourceTree = "<group>"; };
 		5FC13A7ED86DDAB60A3DBA69 /* WalkActivityIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkActivityIntents.swift; sourceTree = "<group>"; };
 		61DB9BDB860F3B8C03165EC7 /* BrowsePostsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowsePostsView.swift; sourceTree = "<group>"; };
+		65B71D8BD428FD09B78CF8C5 /* CardCaptureCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardCaptureCoordinator.swift; sourceTree = "<group>"; };
 		6BA09DC4142D6B640BB78EE4 /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
 		6EA572310A954988DC2E59C6 /* CloudinaryHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudinaryHelper.swift; sourceTree = "<group>"; };
+		7339B327CC6319328141D0C5 /* ReceiptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiptView.swift; sourceTree = "<group>"; };
 		7457A1471EFA575685D38319 /* WalkActivityWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = WalkActivityWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		78322BB9F2E3FC9FD5974710 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
 		79347EF833C5D5112A52685E /* Elevation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Elevation.swift; sourceTree = "<group>"; };
+		7B7BD8F8AB840B93022CD6D1 /* GrowHostedPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GrowHostedPageView.swift; sourceTree = "<group>"; };
 		7D44CB10C0DF9689F35D9D55 /* WalkActivityLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkActivityLiveActivity.swift; sourceTree = "<group>"; };
 		85E4035A57F18C64059A8A2C /* ChatReadStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatReadStore.swift; sourceTree = "<group>"; };
 		8697E144AEA2D70846C9C6F9 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
@@ -157,6 +170,7 @@
 		8EEA80F47CC3747519F4EA74 /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
 		8F11EB8ED116EDCEA4AD6707 /* EdgeSwipeBack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeSwipeBack.swift; sourceTree = "<group>"; };
 		92FAC1FE8AD0E9DAA1A9EE16 /* SectionHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionHeader.swift; sourceTree = "<group>"; };
+		94186DC17830C31E51F4510E /* PayoutHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayoutHistoryView.swift; sourceTree = "<group>"; };
 		955C6BACAF7D42FE5F4468B9 /* AuthErrorHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthErrorHandler.swift; sourceTree = "<group>"; };
 		96BEC17FB04C7C8E992A4882 /* PreWalkView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreWalkView.swift; sourceTree = "<group>"; };
 		9C19997891CE5D8526D8BCE0 /* ProfileComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileComponents.swift; sourceTree = "<group>"; };
@@ -164,6 +178,7 @@
 		A3695B4344339980C1ED5ED6 /* CreatePostView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreatePostView.swift; sourceTree = "<group>"; };
 		AA302B84A8D72480C4D9F389 /* ChatViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViews.swift; sourceTree = "<group>"; };
 		AA7079E89F71AD07AA41DE5C /* LottieView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LottieView.swift; sourceTree = "<group>"; };
+		AFD867AF9BEE337E3A8517EF /* StripeCardFormSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StripeCardFormSheet.swift; sourceTree = "<group>"; };
 		B0CE113F642431B82F82F801 /* AddressSearchService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddressSearchService.swift; sourceTree = "<group>"; };
 		B19A6D2EB5951E6A7E3DCB12 /* ThemeEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeEnvironment.swift; sourceTree = "<group>"; };
 		B3EDF7019643739E489244FC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -193,6 +208,7 @@
 		EA94710D0A30EB6B2E357946 /* WalkLiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WalkLiveActivityManager.swift; sourceTree = "<group>"; };
 		ED5001E4307C051A7E5519DB /* PaymentMethodsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentMethodsView.swift; sourceTree = "<group>"; };
 		EDF5B83BA64CD3D5B1C3BF3A /* ScreenBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenBackground.swift; sourceTree = "<group>"; };
+		F3F758B9609BB4C047C45785 /* CardCaptureModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardCaptureModifier.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -206,7 +222,11 @@
 				AE8E7C082B1D50A45B61C5B6 /* GoogleSignIn in Frameworks */,
 				977E35589D26BE0E44B6E772 /* GoogleSignInSwift in Frameworks */,
 				8DCF8C8C8686523B85613EBC /* Lottie in Frameworks */,
-				9E997BF55A507CC5BE94F1FC /* SecurityKit in Frameworks */,
+				9E997BF55A507CC5BE94F1FC /* StripePaymentSheet in Frameworks */,
+				1BC9C47138359F9A87A5F4D0 /* StripePaymentsUI in Frameworks */,
+				8CBC7E1C68942DB4C5D070FD /* StripePayments in Frameworks */,
+				291E19735B68E8E64CCE0C63 /* StripeApplePay in Frameworks */,
+				4A305430F060B293BEDC54C8 /* SecurityKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -288,6 +308,7 @@
 			children = (
 				B0CE113F642431B82F82F801 /* AddressSearchService.swift */,
 				C80A35CA0BE5B9CA8D5176B7 /* AuthHelpers.swift */,
+				65B71D8BD428FD09B78CF8C5 /* CardCaptureCoordinator.swift */,
 				DA857488A259617B49500620 /* LocationTracker.swift */,
 				C6C1B934E3C4238E0A55324A /* NotificationManager.swift */,
 				DA0313CEBB65967FE4EFAC64 /* PaymentService.swift */,
@@ -388,12 +409,14 @@
 			children = (
 				9E18DB6BFD88A81846FA0A2C /* AddressAutocompleteView.swift */,
 				61DB9BDB860F3B8C03165EC7 /* BrowsePostsView.swift */,
+				F3F758B9609BB4C047C45785 /* CardCaptureModifier.swift */,
 				061D674D0628E92CC8F597B9 /* ChatComponents.swift */,
 				AA302B84A8D72480C4D9F389 /* ChatViews.swift */,
 				B959599B0857204147C52F98 /* ContentView.swift */,
 				A3695B4344339980C1ED5ED6 /* CreatePostView.swift */,
 				8F11EB8ED116EDCEA4AD6707 /* EdgeSwipeBack.swift */,
 				3B07AD794C7E8CC951582621 /* EditPostView.swift */,
+				7B7BD8F8AB840B93022CD6D1 /* GrowHostedPageView.swift */,
 				E5A55946CCAABF5720B4EB95 /* icon.json */,
 				8EBC662AFB2649666F8FCCCD /* ImagePicker.swift */,
 				48A8661F416DDE4195C62293 /* LoginView.swift */,
@@ -403,14 +426,17 @@
 				C4C752B72E4AD922787ECD20 /* OwnerViews.swift */,
 				0108336D1E91947DFA5C807A /* PaymentHistoryView.swift */,
 				ED5001E4307C051A7E5519DB /* PaymentMethodsView.swift */,
+				94186DC17830C31E51F4510E /* PayoutHistoryView.swift */,
 				E01B86ADE85C9D91A649AF37 /* PostComponents.swift */,
 				CCABDB3E964AE0A3A8925071 /* PostDetailView.swift */,
 				96BEC17FB04C7C8E992A4882 /* PreWalkView.swift */,
 				9C19997891CE5D8526D8BCE0 /* ProfileComponents.swift */,
+				7339B327CC6319328141D0C5 /* ReceiptView.swift */,
 				0897B76478E5FE981589E1E4 /* SignUpView.swift */,
 				1D6739812DDF4937B0C80BD3 /* SitterHomeView.swift */,
 				43A15FD047A8E9601C5D3313 /* SitterProfileView.swift */,
 				1C8219BB1F237B61F50E86C5 /* SocialRoleSelectionView.swift */,
+				AFD867AF9BEE337E3A8517EF /* StripeCardFormSheet.swift */,
 				C33ADE18E53FB3290E8FC041 /* WalkFullView.swift */,
 				4C07A85790D63982A3C3F26F /* WalkRecapView.swift */,
 			);
@@ -457,6 +483,10 @@
 				E2FA0E25B75E88405B76781F /* GoogleSignIn */,
 				CD00BA1D0194C8DD6FD4B30F /* GoogleSignInSwift */,
 				EB747355D215666D781B149C /* Lottie */,
+				60F8608D1AB92E2FA3F8DFAC /* StripePaymentSheet */,
+				E7433F0E312DADAA7BFFF3CF /* StripePaymentsUI */,
+				ADDD964C95B4B1AE05069D7D /* StripePayments */,
+				7BD785F9158D588F9FFF7307 /* StripeApplePay */,
 				C346BA0635C1E6957954F4E8 /* SecurityKit */,
 			);
 			productName = DogSitter;
@@ -493,6 +523,7 @@
 				B77D7E6474682F7EE9ADF14E /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				9E48349BCA75233514C842D7 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 				919B307F16ADB29310FBF1F8 /* XCRemoteSwiftPackageReference "lottie-spm" */,
+				7E05C0F716CD6F7060637EC4 /* XCRemoteSwiftPackageReference "stripe-ios" */,
 				58EA9FAEB1A0E8D76BBF058C /* XCLocalSwiftPackageReference "SecurityKit" */,
 			);
 			projectDirPath = "";
@@ -542,6 +573,8 @@
 				9261F79BE9DFBF35AA6BDFA4 /* Badge.swift in Sources */,
 				9740F14BC145A19D00D66278 /* BrowsePostsView.swift in Sources */,
 				9A7B2A11A8F2F01F40DB4E3B /* CachedAsyncImage.swift in Sources */,
+				98668646C560F523E1EA28EE /* CardCaptureCoordinator.swift in Sources */,
+				4B81D131CF69B471CD99CF6F /* CardCaptureModifier.swift in Sources */,
 				0F5219BDB5110020352E1FFE /* CardModifier.swift in Sources */,
 				826DCD792514BFA7E17EE62A /* ChatComponents.swift in Sources */,
 				7DF12BF59F6A766D056886FD /* ChatReadStore.swift in Sources */,
@@ -558,6 +591,7 @@
 				53B63122E572DA71B772DAE1 /* Elevation.swift in Sources */,
 				F003C257171DE8AAB3FFC368 /* EmptyStateView.swift in Sources */,
 				289AA4990B8C099A15CA12ED /* FirebaseModels.swift in Sources */,
+				3F4CDBA3274DBF03A91817DC /* GrowHostedPageView.swift in Sources */,
 				8B70C0100DFB52B40060CAC1 /* ImagePicker.swift in Sources */,
 				C0599BA8CAFDD3816438C106 /* LoadingOverlay.swift in Sources */,
 				FA87F396EEEC46BEFE8E93D3 /* LocationTracker.swift in Sources */,
@@ -571,6 +605,7 @@
 				FCCF554D78708ADCCCE1047B /* PaymentMethodsView.swift in Sources */,
 				D550D70E310C957352C4CF4E /* PaymentModels.swift in Sources */,
 				A2638C38774C6AC19F6D8C03 /* PaymentService.swift in Sources */,
+				297FF1E725D29266D6E5C980 /* PayoutHistoryView.swift in Sources */,
 				7EA2F7A18EC8DECFD1334427 /* PostComponents.swift in Sources */,
 				169750C2ECD1416C0EBE0105 /* PostDetailView.swift in Sources */,
 				6F4C73F343A2831995B7B86C /* PreWalkView.swift in Sources */,
@@ -578,6 +613,7 @@
 				2E570FCC717DBE7F7A496E69 /* ProfileAvatar.swift in Sources */,
 				638911C303CC4E4AD72D7A54 /* ProfileComponents.swift in Sources */,
 				5B01EE76409F26CB956F59D6 /* Radius.swift in Sources */,
+				FF966C98A754B80C6C13837E /* ReceiptView.swift in Sources */,
 				1C6B40917EE3C29C6C11B5C3 /* RouteSnapshotter.swift in Sources */,
 				956EB7FCAF66E7B00F80CA71 /* ScreenBackground.swift in Sources */,
 				77C57FAC15773F92EA6367D4 /* SecondaryButtonStyle.swift in Sources */,
@@ -588,6 +624,7 @@
 				67916E8CEEAAD7A25708A9C5 /* SocialAuthManager.swift in Sources */,
 				E10455F18F26A1D6895AD89D /* SocialRoleSelectionView.swift in Sources */,
 				45AA1F9C618E3EFD2E894502 /* Spacing.swift in Sources */,
+				97BCE823DC02D725D9B1EB4B /* StripeCardFormSheet.swift in Sources */,
 				C0ADA3FCCDCF5712A02E9665 /* Theme+Presets.swift in Sources */,
 				13339F971D9A3109B653F215 /* Theme.swift in Sources */,
 				5876A727C6B2A2806FE4D37C /* ThemeEnvironment.swift in Sources */,
@@ -852,6 +889,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		7E05C0F716CD6F7060637EC4 /* XCRemoteSwiftPackageReference "stripe-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/stripe/stripe-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 24.0.0;
+			};
+		};
 		919B307F16ADB29310FBF1F8 /* XCRemoteSwiftPackageReference "lottie-spm" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/airbnb/lottie-spm.git";
@@ -891,10 +936,25 @@
 			package = B77D7E6474682F7EE9ADF14E /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAnalytics;
 		};
+		60F8608D1AB92E2FA3F8DFAC /* StripePaymentSheet */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7E05C0F716CD6F7060637EC4 /* XCRemoteSwiftPackageReference "stripe-ios" */;
+			productName = StripePaymentSheet;
+		};
 		612941E548241C26DEDAA206 /* FirebaseAuth */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = B77D7E6474682F7EE9ADF14E /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAuth;
+		};
+		7BD785F9158D588F9FFF7307 /* StripeApplePay */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7E05C0F716CD6F7060637EC4 /* XCRemoteSwiftPackageReference "stripe-ios" */;
+			productName = StripeApplePay;
+		};
+		ADDD964C95B4B1AE05069D7D /* StripePayments */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7E05C0F716CD6F7060637EC4 /* XCRemoteSwiftPackageReference "stripe-ios" */;
+			productName = StripePayments;
 		};
 		C346BA0635C1E6957954F4E8 /* SecurityKit */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -914,6 +974,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 9E48349BCA75233514C842D7 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
 			productName = GoogleSignIn;
+		};
+		E7433F0E312DADAA7BFFF3CF /* StripePaymentsUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7E05C0F716CD6F7060637EC4 /* XCRemoteSwiftPackageReference "stripe-ios" */;
+			productName = StripePaymentsUI;
 		};
 		EB747355D215666D781B149C /* Lottie */ = {
 			isa = XCSwiftPackageProductDependency;

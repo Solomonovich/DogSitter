@@ -42,12 +42,24 @@ struct DogSitterApp: App {
                 .environmentObject(paymentService)
                 .environment(\.theme, themeManager.theme)
                 .preferredColorScheme(themeManager.isDarkMode ? .dark : .light)
+                .task {
+                    // Fetch the active rail + Stripe publishable key once at launch.
+                    await paymentService.loadConfig()
+                }
                 .onOpenURL { url in
-                    // Tapping the walk Live Activity: dogsitter://walk/{walkId}
-                    guard url.scheme == "dogsitter", url.host == "walk" else { return }
-                    let walkId = url.lastPathComponent
-                    guard !walkId.isEmpty, walkId != "/" else { return }
-                    appState.openWalk(byId: walkId)
+                    guard url.scheme == "dogsitter" else { return }
+                    switch url.host {
+                    case "walk":
+                        // Tapping the walk Live Activity: dogsitter://walk/{walkId}
+                        let walkId = url.lastPathComponent
+                        guard !walkId.isEmpty, walkId != "/" else { return }
+                        appState.openWalk(byId: walkId)
+                    case "pay":
+                        // Grow hosted-page return (Phase 3): dogsitter://pay?...
+                        NotificationCenter.default.post(name: .growPaymentReturn, object: url)
+                    default:
+                        break
+                    }
                 }
                 .overlay(
                     Group {

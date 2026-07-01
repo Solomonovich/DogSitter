@@ -1,24 +1,26 @@
 import SwiftUI
 
-/// Manage saved (mock) cards. SANDBOX ONLY — no real PAN is ever transmitted or
-/// stored; the backend keeps just brand + last4 + a fake token.
+/// Manage saved cards. Capture is real and tokenized (Stripe PaymentSheet via
+/// CardCaptureCoordinator); on the sandbox/mock rail a simple form collects only a
+/// last4. No PAN ever reaches our backend.
 struct PaymentMethodsView: View {
     @EnvironmentObject var payments: PaymentService
     @Environment(\.theme) private var theme
-    @State private var showAddCard = false
+    @State private var triggerCapture = false
+    @State private var capturing = false
 
     var body: some View {
         ScrollView {
             VStack(spacing: theme.spacing.lg) {
-                if !PaymentConfig.isConfigured { PaymentSandboxNotice() }
+                if payments.activeProvider == "mock" { PaymentSandboxNotice() }
 
                 if payments.paymentMethods.isEmpty {
                     EmptyStateView(
                         icon: "creditcard",
                         title: "אין אמצעי תשלום",
-                        message: "הוסף כרטיס כדי לשלם עבור הליכות.",
-                        actionTitle: "הוסף כרטיס",
-                        action: { showAddCard = true }
+                        message: "הוסף כרטיס כדי לשלם עבור הליכות ואירוחים.",
+                        actionTitle: capturing ? "מוסיף…" : "הוסף כרטיס",
+                        action: { addCard() }
                     )
                     .padding(.top, theme.spacing.xl)
                 } else {
@@ -27,8 +29,9 @@ struct PaymentMethodsView: View {
                             PaymentMethodRow(method: method)
                         }
                     }
-                    Button("הוסף כרטיס") { showAddCard = true }
+                    Button(capturing ? "מוסיף…" : "הוסף כרטיס") { addCard() }
                         .buttonStyle(PrimaryButtonStyle())
+                        .disabled(capturing)
                 }
             }
             .padding(.horizontal, theme.spacing.md)
@@ -38,11 +41,18 @@ struct PaymentMethodsView: View {
         .navigationTitle("אמצעי תשלום")
         .navigationBarTitleDisplayMode(.inline)
         .task { await payments.loadPaymentMethods() }
-        .sheet(isPresented: $showAddCard) { AddCardSheet() }
+        .cardCapture(trigger: $triggerCapture) { _ in capturing = false }
+    }
+
+    private func addCard() {
+        guard !capturing else { return }
+        capturing = true
+        triggerCapture = true
     }
 }
 
 struct PaymentMethodRow: View {
+    @EnvironmentObject var payments: PaymentService
     @Environment(\.theme) private var theme
     let method: PaymentMethod
 
@@ -55,13 +65,30 @@ struct PaymentMethodRow: View {
                 Text(method.brand.capitalized)
                     .font(theme.typography.body)
                     .foregroundStyle(theme.color.textPrimary)
-                Text(method.maskedNumber)
-                    .font(theme.typography.caption)
-                    .foregroundStyle(theme.color.textSecondary)
+                HStack(spacing: theme.spacing.xs) {
+                    Text(method.maskedNumber)
+                    if let exp = method.expiryLabel { Text("· \(exp)") }
+                }
+                .font(theme.typography.caption)
+                .foregroundStyle(theme.color.textSecondary)
             }
             Spacer()
             if method.isDefault {
                 Badge(text: "ברירת מחדל", kind: .accent)
+            }
+            Menu {
+                if !method.isDefault {
+                    Button("הגדר כברירת מחדל") {
+                        Task { await payments.setDefaultPaymentMethod(id: method.id) }
+                    }
+                }
+                Button("מחק כרטיס", role: .destructive) {
+                    Task { await payments.deletePaymentMethod(id: method.id) }
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.system(size: 20))
+                    .foregroundStyle(theme.color.textSecondary)
             }
         }
         .padding(theme.spacing.md)
@@ -69,8 +96,10 @@ struct PaymentMethodRow: View {
     }
 }
 
-/// Sandbox card-entry form. We only keep brand + last4 — the rest is discarded.
-struct AddCardSheet: View {
+/// Sandbox-only card form (mock rail). Collects a fake card number and keeps only
+/// the last4. Never used on a real rail — Stripe capture goes through PaymentSheet.
+struct SandboxCardSheet: View {
+    var onSaved: () -> Void = {}
     @EnvironmentObject var payments: PaymentService
     @Environment(\.theme) private var theme
     @Environment(\.dismiss) private var dismiss
@@ -127,24 +156,11 @@ struct AddCardSheet: View {
 
     private func digits(_ s: String) -> String { s.filter(\.isNumber) }
 
-    private func brand(for digits: String) -> String {
-        switch digits.first {
-        case "4": return "visa"
-        case "5": return "mastercard"
-        case "3": return "amex"
-        default:  return "card"
-        }
-    }
-
     private func save() async {
         submitting = true
         defer { submitting = false }
-        let d = digits(number)
-        let ok = await payments.addPaymentMethod(
-            last4: String(d.suffix(4)),
-            brand: brand(for: d),
-            makeDefault: makeDefault
-        )
-        if ok { dismiss() } else { errorText = payments.lastError ?? "שמירת הכרטיס נכשלה" }
+        // The mock rail's finalizeSavedCard reads last4 from `ref`.
+        let ok = await payments.finalizeCard(ref: String(digits(number).suffix(4)), makeDefault: makeDefault)
+        if ok { onSaved(); dismiss() } else { errorText = payments.lastError ?? "שמירת הכרטיס נכשלה" }
     }
 }

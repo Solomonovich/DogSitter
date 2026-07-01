@@ -28,3 +28,39 @@ verify_jwt = false
 
 [functions.get-balance]
 verify_jwt = false
+
+# Public config (no auth — the publishable key is public).
+[functions.payment-config]
+verify_jwt = false
+
+# Card capture (Firebase-token authenticated inside the function).
+[functions.setup-card]
+verify_jwt = false
+
+[functions.finalize-card]
+verify_jwt = false
+
+# Stripe webhook — authenticated by the Stripe-Signature HMAC, not a JWT.
+[functions.stripe-webhook]
+verify_jwt = false
+
+# Refunds, manual payouts, receipts (Firebase-token authenticated inside).
+[functions.refund]
+verify_jwt = false
+
+[functions.record-payout]
+verify_jwt = false
+
+[functions.get-payouts]
+verify_jwt = false
+
+[functions.receipts]
+verify_jwt = false
+
+# Dunning runner — invoked by Supabase cron, authenticated by x-cron-secret.
+[functions.retry-charges]
+verify_jwt = false
+
+# Grow (Meshulam) IPN webhook — authenticated by the Grow shared-secret signature.
+[functions.grow-webhook]
+verify_jwt = false

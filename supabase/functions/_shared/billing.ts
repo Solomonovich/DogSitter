@@ -40,6 +40,44 @@ export function serviceDayString(endTimeISO: string | undefined): string {
   }).format(d);
 }
 
+// ----------------------------------------------------------------- commission ---
+// The platform's marketplace take-rate, in basis points (PLATFORM_FEE_BPS, e.g.
+// 1000 = 10%). Defaults to 0 => no fee, the sitter accrues the full amount.
+function platformFeeBps(): number {
+  return Number(Deno.env.get("PLATFORM_FEE_BPS") ?? 0) || 0;
+}
+
+/** Split a gross charge into the platform fee and the sitter's NET earnings. */
+export function computeFeeSplit(amountAgorot: number): {
+  platformFeeAgorot: number;
+  sitterAccruedAgorot: number;
+} {
+  const fee = Math.round((amountAgorot * platformFeeBps()) / 10_000);
+  const platformFeeAgorot = Math.max(0, Math.min(fee, amountAgorot));
+  return { platformFeeAgorot, sitterAccruedAgorot: amountAgorot - platformFeeAgorot };
+}
+
+// ------------------------------------------------------------------------- VAT ---
+// Israeli VAT, in basis points (VAT_RATE_BPS, e.g. 1800 = 18%). VAT_INCLUSIVE
+// (default true) means the displayed price already includes VAT, so we back it
+// out of the gross; exclusive would add it on top. Defaults to 0 => no VAT line.
+function vatRateBps(): number {
+  return Number(Deno.env.get("VAT_RATE_BPS") ?? 0) || 0;
+}
+function vatInclusive(): boolean {
+  return (Deno.env.get("VAT_INCLUSIVE") ?? "true") !== "false";
+}
+
+/** The VAT portion of a gross charge and the rate used (for receipts/audit). */
+export function computeVat(grossAgorot: number): { vatAgorot: number; vatRateBps: number } {
+  const rate = vatRateBps();
+  if (rate <= 0) return { vatAgorot: 0, vatRateBps: 0 };
+  const vat = vatInclusive()
+    ? Math.round((grossAgorot * rate) / (10_000 + rate))
+    : Math.round((grossAgorot * rate) / 10_000);
+  return { vatAgorot: vat, vatRateBps: rate };
+}
+
 /** "₪12.50" style formatting for chat messages written back to Firestore. */
 export function formatIls(agorot: number): string {
   return `₪${(agorot / 100).toLocaleString("he-IL", {

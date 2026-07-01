@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Role-aware wallet: owners see what they've been charged, sitters see accrued
-/// earnings (collect-only — not yet paid out). History is read live from Firestore
-/// via PaymentService; the running total comes from the get-balance function.
-struct PaymentHistoryView: View {
+/// The role-aware Payments hub, reached from the profile for BOTH roles.
+/// Owner: total paid, saved cards, transactions (tap → receipt / refund).
+/// Sitter: total earned, available-to-pay-out, payout history, transactions.
+struct PaymentsHubView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var payments: PaymentService
     @Environment(\.theme) private var theme
@@ -13,13 +13,18 @@ struct PaymentHistoryView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: theme.spacing.lg) {
-                if !PaymentConfig.isConfigured { PaymentSandboxNotice() }
+                if payments.activeProvider == "mock" { PaymentSandboxNotice() }
 
                 balanceCard
 
                 if isOwner {
                     ProfileLinkRow(icon: "creditcard.fill", title: "אמצעי תשלום") {
                         PaymentMethodsView()
+                    }
+                    .card()
+                } else {
+                    ProfileLinkRow(icon: "banknote.fill", title: "תשלומים שקיבלתי") {
+                        PayoutHistoryView()
                     }
                     .card()
                 }
@@ -30,29 +35,46 @@ struct PaymentHistoryView: View {
             .padding(.vertical, theme.spacing.lg)
         }
         .screenBackground()
-        .navigationTitle(isOwner ? "התשלומים שלי" : "הרווחים שלי")
+        .navigationTitle(isOwner ? "התשלומים שלי" : "הארנק שלי")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             if let uid = appState.currentUser?.id {
                 payments.startListening(uid: uid, role: appState.currentUserRole)
                 await payments.loadBalance()
+                if !isOwner { await payments.loadPayouts() }
             }
         }
         .onDisappear { payments.stopListening() }
     }
 
     private var balanceCard: some View {
-        let agorot = isOwner ? payments.balance.ownerChargedAgorot : payments.balance.sitterAccruedAgorot
+        let b = payments.balance
         return VStack(spacing: theme.spacing.xs) {
             Text(isOwner ? "סה״כ שולם" : "סה״כ הרווחת")
                 .font(theme.typography.subheadline)
                 .foregroundStyle(theme.color.textSecondary)
-            Text(Money.formatILS(agorot))
+            Text(Money.formatILS(isOwner ? b.ownerChargedAgorot : b.sitterAccruedAgorot))
                 .font(theme.typography.largeTitle)
                 .fontWeight(.bold)
                 .foregroundStyle(theme.color.textPrimary)
-            if !isOwner {
-                Badge(text: "טרם הועבר לתשלום", kind: .warning)
+
+            if isOwner {
+                if b.ownerRefundedAgorot > 0 {
+                    Text("מתוכו הוחזר: \(Money.formatILS(b.ownerRefundedAgorot))")
+                        .font(theme.typography.caption)
+                        .foregroundStyle(theme.color.textSecondary)
+                }
+            } else {
+                HStack(spacing: theme.spacing.xs) {
+                    Text("זמין לתשלום:")
+                        .font(theme.typography.subheadline)
+                        .foregroundStyle(theme.color.textSecondary)
+                    Text(Money.formatILS(b.sitterAvailableAgorot))
+                        .font(theme.typography.bodyBold)
+                        .foregroundStyle(theme.color.success)
+                }
+                .padding(.top, theme.spacing.xxs)
+                Badge(text: "התשלום מתבצע ידנית ל-PayBox / ביט", kind: .warning)
                     .padding(.top, theme.spacing.xxs)
             }
         }
@@ -67,14 +89,21 @@ struct PaymentHistoryView: View {
                 icon: "creditcard",
                 title: "אין עדיין תשלומים",
                 message: isOwner
-                    ? "תשלומים יופיעו כאן לאחר שהליכות יושלמו."
-                    : "הרווחים יופיעו כאן לאחר שתשלים הליכות."
+                    ? "תשלומים יופיעו כאן לאחר שירותים שהושלמו."
+                    : "הרווחים יופיעו כאן לאחר שתשלים שירותים."
             )
             .padding(.top, theme.spacing.xl)
         } else {
             VStack(spacing: theme.spacing.sm) {
                 ForEach(payments.transactions) { tx in
-                    PaymentTransactionRow(tx: tx)
+                    if tx.paymentStatus == .succeeded {
+                        NavigationLink { ReceiptView(transaction: tx) } label: {
+                            PaymentTransactionRow(tx: tx)
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        PaymentTransactionRow(tx: tx)
+                    }
                 }
             }
         }
@@ -87,12 +116,12 @@ struct PaymentTransactionRow: View {
 
     var body: some View {
         HStack(spacing: theme.spacing.md) {
-            Image(systemName: "pawprint.circle.fill")
+            Image(systemName: tx.paymentStatus == .refunded ? "arrow.uturn.left.circle.fill" : "pawprint.circle.fill")
                 .font(.system(size: 30))
-                .foregroundStyle(theme.color.accent)
+                .foregroundStyle(tx.needsAttention ? theme.color.error : theme.color.accent)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(tx.text ?? "תשלום עבור הליכה")
+                Text(tx.text ?? "תשלום עבור שירות")
                     .font(theme.typography.body)
                     .foregroundStyle(theme.color.textPrimary)
                 if let date = tx.createdAt?.dateValue() {
@@ -125,7 +154,7 @@ struct PaymentTransactionRow: View {
     }
 }
 
-/// Shown while the payment backend isn't wired to a real processor.
+/// Shown while the payment backend is on the mock rail (no real charges).
 struct PaymentSandboxNotice: View {
     @Environment(\.theme) private var theme
     var body: some View {

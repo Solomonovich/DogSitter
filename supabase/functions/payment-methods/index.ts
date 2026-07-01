@@ -1,10 +1,10 @@
-// Mock payment-method management.
-//   POST /payment-methods  body: { "last4": "4242", "brand": "visa", "isDefault": true }
-//   GET  /payment-methods  -> { methods: [...] }
+// Saved-card management for the signed-in user.
+//   GET    /payment-methods                 -> { methods: [...] }   (active cards)
+//   POST   /payment-methods  { id }         -> set that card as default
+//   DELETE /payment-methods  { id }         -> soft-delete that card
 //
-// SANDBOX ONLY. We never receive or store a real PAN — the client sends a brand +
-// last4 and we mint a fake token. When the real rail lands, card capture moves to
-// the provider SDK and the client sends back a provider token instead.
+// Card CAPTURE lives in setup-card / finalize-card (real tokenization); this
+// endpoint never receives a PAN.
 import { json, preflight } from "../_shared/cors.ts";
 import { AuthError, verifyFirebaseToken } from "../_shared/firebaseAuth.ts";
 import { serviceClient } from "../_shared/db.ts";
@@ -22,44 +22,50 @@ Deno.serve(async (req) => {
 
   const db = serviceClient();
 
+  // ---- list active cards --------------------------------------------------------
   if (req.method === "GET") {
-    const { data, error } = await db
-      .from("payment_methods")
-      .select("id, brand, last4, is_default, created_at")
+    const { data, error } = await db.from("payment_methods")
+      .select("id, brand, last4, exp_month, exp_year, provider, is_default, created_at")
       .eq("user_id", uid)
+      .is("deleted_at", null)
+      .order("is_default", { ascending: false })
       .order("created_at", { ascending: false });
     if (error) return json({ error: error.message }, 500);
     return json({ methods: data ?? [] }, 200);
   }
 
+  const body = await req.json().catch(() => ({}));
+  const id = String(body.id ?? "");
+  if (!id) return json({ error: "id required" }, 400);
+
+  // Ownership check — never touch another user's card.
+  const owned = await db.from("payment_methods").select("id, is_default")
+    .eq("id", id).eq("user_id", uid).is("deleted_at", null).maybeSingle();
+  if (!owned.data) return json({ error: "card not found" }, 404);
+
+  // ---- set default --------------------------------------------------------------
   if (req.method === "POST") {
-    const body = await req.json().catch(() => ({}));
-    const last4 = String(body.last4 ?? "").replace(/\D/g, "").slice(-4);
-    if (last4.length !== 4) return json({ error: "valid last4 required" }, 400);
-    const brand = String(body.brand ?? "mock").slice(0, 32);
-    const isDefault = body.isDefault === true;
-
-    // First card becomes the default automatically.
-    const existing = await db.from("payment_methods").select("id").eq("user_id", uid).limit(1);
-    const makeDefault = isDefault || (existing.data?.length ?? 0) === 0;
-
-    if (makeDefault) {
-      await db.from("payment_methods").update({ is_default: false }).eq("user_id", uid);
-    }
-
-    const { data, error } = await db
-      .from("payment_methods")
-      .insert({
-        user_id: uid,
-        brand,
-        last4,
-        provider_token: `mock_pm_${crypto.randomUUID()}`,
-        is_default: makeDefault,
-      })
-      .select("id, brand, last4, is_default, created_at")
-      .single();
+    await db.from("payment_methods").update({ is_default: false }).eq("user_id", uid);
+    const { error } = await db.from("payment_methods").update({ is_default: true }).eq("id", id);
     if (error) return json({ error: error.message }, 500);
-    return json({ method: data }, 201);
+    return json({ ok: true }, 200);
+  }
+
+  // ---- soft-delete (and promote a new default if needed) ------------------------
+  if (req.method === "DELETE") {
+    const { error } = await db.from("payment_methods")
+      .update({ deleted_at: new Date().toISOString(), is_default: false }).eq("id", id);
+    if (error) return json({ error: error.message }, 500);
+
+    if (owned.data.is_default) {
+      const next = await db.from("payment_methods").select("id")
+        .eq("user_id", uid).is("deleted_at", null)
+        .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (next.data) {
+        await db.from("payment_methods").update({ is_default: true }).eq("id", next.data.id);
+      }
+    }
+    return json({ ok: true }, 200);
   }
 
   return json({ error: "method not allowed" }, 405);

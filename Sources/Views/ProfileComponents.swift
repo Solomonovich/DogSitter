@@ -110,7 +110,7 @@ struct ProfileSettingsCard: View {
                 .padding(.vertical, theme.spacing.xs)
 
             ProfileLinkRow(icon: "creditcard.fill", title: "תשלומים") {
-                PaymentHistoryView()
+                PaymentsHubView()
             }
         }
         .card()

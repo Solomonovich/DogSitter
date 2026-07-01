@@ -247,6 +247,14 @@ service cloud.firestore {
       allow create, update, delete: if false;
     }
 
+    // -------------------------------------------------------------- payouts ---
+    // Manual sitter payouts, written ONLY by the record-payout Edge Function
+    // (Admin SDK). A sitter may READ their own payout history; no client writes.
+    match /payouts/{payoutId} {
+      allow read: if signedIn() && resource.data.sitterId == request.auth.uid;
+      allow create, update, delete: if false;
+    }
+
     // Anything not matched above is denied by default (no catch-all needed).
   }
 }

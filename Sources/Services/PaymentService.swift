@@ -8,10 +8,10 @@ import FirebaseFirestore
 ///
 /// Fill these in after creating the Supabase project (see `supabase/README.md`).
 enum PaymentConfig {
-    /// Supabase project `dogsitter-payments` (ref zqwzfjpymktfeoripicl, eu-central-1).
-    static let functionsBaseURL = "https://zqwzfjpymktfeoripicl.supabase.co/functions/v1"
+    /// Supabase project `dogsitter-payments` (ref szxldlkbxkepydjincgk, eu-central-1).
+    static let functionsBaseURL = "https://szxldlkbxkepydjincgk.supabase.co/functions/v1"
     /// Public anon key — safe to ship; sent as the `apikey` header.
-    static let anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpxd3pmanB5bWt0ZmVvcmlwaWNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMDkzNDksImV4cCI6MjA5Nzg4NTM0OX0.3hgaNdAB-9mXQbfmPcTJQBqLEswsrYtOLTCvpqJYSJE"
+    static let anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6eGxkbGtieGtlcHlkamluY2drIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4NTI2MTIsImV4cCI6MjA5ODQyODYxMn0.NAh6sTZtd6I4bBUdj7sm9v4Z8TWdIKreo9pA3Hw4ddo"
 
     static var isConfigured: Bool { !functionsBaseURL.isEmpty && !anonKey.isEmpty }
 }
@@ -44,8 +44,16 @@ final class PaymentService: ObservableObject {
     @Published private(set) var transactions: [PaymentTransaction] = []
     @Published private(set) var balance: Balance = .zero
     @Published private(set) var paymentMethods: [PaymentMethod] = []
+    @Published private(set) var config: PaymentConfigResponse?
+    @Published private(set) var payouts: [Payout] = []
+    @Published private(set) var payoutAvailableAgorot: Int = 0
     @Published var isProcessing = false
     @Published var lastError: String?
+
+    /// The active rail, once `loadConfig()` has run ("stripe" | "grow" | "mock").
+    var activeProvider: String { config?.provider ?? "mock" }
+    /// Only a real rail requires a saved card before a booking can be approved.
+    var requiresCardForBooking: Bool { activeProvider == "stripe" || activeProvider == "grow" }
 
     private let db = Firestore.firestore()
     private var paymentsListener: ListenerRegistration?
@@ -54,8 +62,12 @@ final class PaymentService: ObservableObject {
 
     /// Live payment history for the signed-in user, scoped to their role so the
     /// participant-only read rule can authorize the query.
+    private var alertedFailures: Set<String> = []
+    private var failuresSeeded = false
+
     func startListening(uid: String, role: UserRole) {
         stopListening()
+        failuresSeeded = false
         let field = role == .owner ? "ownerId" : "sitterId"
         paymentsListener = db.collection("payments")
             .whereField(field, isEqualTo: uid)
@@ -63,10 +75,33 @@ final class PaymentService: ObservableObject {
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self else { return }
                 if let error { self.dbg("payments listen: \(error)"); return }
-                self.transactions = snapshot?.documents.compactMap {
+                let txs = snapshot?.documents.compactMap {
                     try? $0.data(as: PaymentTransaction.self)
                 } ?? []
+                self.transactions = txs
+                if role == .owner { self.notifyNewFailures(txs) }
             }
+    }
+
+    /// Local alert when a charge fails (no backend push yet — see Phase 4 notes).
+    /// The first snapshot seeds known failures silently so launch never spams.
+    private func notifyNewFailures(_ txs: [PaymentTransaction]) {
+        let failed = txs.filter { $0.paymentStatus == .failed }
+        let ids = failed.compactMap { $0.id ?? $0.transactionId }
+        if !failuresSeeded {
+            alertedFailures.formUnion(ids)
+            failuresSeeded = true
+            return
+        }
+        for tx in failed {
+            let id = tx.id ?? tx.transactionId ?? ""
+            guard !id.isEmpty, !alertedFailures.contains(id) else { continue }
+            alertedFailures.insert(id)
+            let body = tx.requiresAction == true
+                ? "נדרש אימות לתשלום. יש לאשר מחדש את התשלום."
+                : "תשלום נכשל. נא לעדכן את אמצעי התשלום."
+            NotificationManager.shared.scheduleLocalAlert(title: "בעיה בתשלום", body: body, identifier: "pay_fail_\(id)")
+        }
     }
 
     func stopListening() {
@@ -123,15 +158,36 @@ final class PaymentService: ObservableObject {
         } catch { dbg("loadPaymentMethods: \(error)") }
     }
 
-    /// Adds a mock card. Returns true on success. SANDBOX ONLY — never send a real PAN.
+    /// Public rail config (provider + Stripe publishable key). Safe to call pre-auth.
+    func loadConfig() async {
+        guard PaymentConfig.isConfigured else { return }
+        do {
+            let data = try await call(path: "payment-config", method: "GET", body: nil, requireAuth: false)
+            config = try JSONDecoder().decode(PaymentConfigResponse.self, from: data)
+        } catch { dbg("loadConfig: \(error)") }
+    }
+
+    // MARK: - Card capture (real tokenization)
+
+    /// Begins card capture; the returned session tells the UI how to proceed
+    /// (Stripe PaymentSheet, Grow hosted page, or the sandbox form).
+    func beginCardSetup(apiVersion: String? = nil) async throws -> SetupSession {
+        var body: [String: Any] = [:]
+        if let apiVersion { body["stripeApiVersion"] = apiVersion }
+        let data = try await call(path: "setup-card", method: "POST", body: body)
+        return try JSONDecoder().decode(SetupSessionResponse.self, from: data).session
+    }
+
+    /// Persists a just-captured card. `ref` is the rail's token/intent id (or last4
+    /// for the sandbox form). Refreshes the saved-card list on success.
     @discardableResult
-    func addPaymentMethod(last4: String, brand: String, makeDefault: Bool) async -> Bool {
+    func finalizeCard(ref: String, makeDefault: Bool) async -> Bool {
         guard PaymentConfig.isConfigured else { lastError = PaymentError.notConfigured.errorDescription; return false }
         isProcessing = true
         defer { isProcessing = false }
         do {
-            _ = try await call(path: "payment-methods", method: "POST",
-                               body: ["last4": last4, "brand": brand, "isDefault": makeDefault])
+            _ = try await call(path: "finalize-card", method: "POST",
+                               body: ["ref": ref, "makeDefault": makeDefault])
             await loadPaymentMethods()
             return true
         } catch {
@@ -140,21 +196,115 @@ final class PaymentService: ObservableObject {
         }
     }
 
+    @discardableResult
+    func deletePaymentMethod(id: String) async -> Bool {
+        do {
+            _ = try await call(path: "payment-methods", method: "DELETE", body: ["id": id])
+            await loadPaymentMethods()
+            return true
+        } catch {
+            lastError = (error as? PaymentError)?.errorDescription ?? error.localizedDescription
+            return false
+        }
+    }
+
+    @discardableResult
+    func setDefaultPaymentMethod(id: String) async -> Bool {
+        do {
+            _ = try await call(path: "payment-methods", method: "POST", body: ["id": id])
+            await loadPaymentMethods()
+            return true
+        } catch {
+            lastError = (error as? PaymentError)?.errorDescription ?? error.localizedDescription
+            return false
+        }
+    }
+
+    // MARK: - Booking gate
+
+    /// For the approve-booking gate: true when booking must be blocked because the
+    /// owner has no card on file. Only enforced once a real rail is active, so the
+    /// app keeps working on the mock rail.
+    func bookingBlockedByMissingCard() async -> Bool {
+        guard requiresCardForBooking else { return false }
+        await loadPaymentMethods()
+        return paymentMethods.isEmpty
+    }
+
+    // MARK: - Payouts / refunds / receipts
+
+    /// Sitter payout history + available-to-pay-out total.
+    func loadPayouts() async {
+        guard PaymentConfig.isConfigured else { return }
+        do {
+            let data = try await call(path: "get-payouts", method: "GET", body: nil)
+            let resp = try JSONDecoder().decode(PayoutsResponse.self, from: data)
+            payouts = resp.payouts
+            payoutAvailableAgorot = resp.availableAgorot
+        } catch { dbg("loadPayouts: \(error)") }
+    }
+
+    /// Admin-only: record that a sitter was paid out (disbursed offline).
+    @discardableResult
+    func recordPayout(sitterId: String, amountAgorot: Int, method: String,
+                      reference: String?, note: String?) async -> Bool {
+        isProcessing = true
+        defer { isProcessing = false }
+        do {
+            _ = try await call(path: "record-payout", method: "POST", body: [
+                "sitterId": sitterId, "amountAgorot": amountAgorot, "method": method,
+                "reference": reference as Any, "note": note as Any,
+            ])
+            return true
+        } catch {
+            lastError = (error as? PaymentError)?.errorDescription ?? error.localizedDescription
+            return false
+        }
+    }
+
+    /// Refund a charge (full if amountAgorot is nil). Owner-of-record or admin.
+    @discardableResult
+    func refund(transactionId: String, amountAgorot: Int?) async -> Bool {
+        isProcessing = true
+        defer { isProcessing = false }
+        do {
+            var body: [String: Any] = ["transactionId": transactionId]
+            if let amountAgorot { body["amountAgorot"] = amountAgorot }
+            _ = try await call(path: "refund", method: "POST", body: body)
+            return true
+        } catch {
+            lastError = (error as? PaymentError)?.errorDescription ?? error.localizedDescription
+            return false
+        }
+    }
+
+    /// The VAT-breakdown receipt for a transaction, if one was issued.
+    func loadReceipt(transactionId: String) async -> Receipt? {
+        guard PaymentConfig.isConfigured else { return nil }
+        do {
+            let data = try await call(path: "receipts?transactionId=\(transactionId)", method: "GET", body: nil)
+            return try JSONDecoder().decode(ReceiptResponse.self, from: data).receipt
+        } catch { dbg("loadReceipt: \(error)"); return nil }
+    }
+
     private struct MethodsResponse: Decodable { let methods: [PaymentMethod] }
 
     // MARK: - HTTP
 
-    private func call(path: String, method: String, body: [String: Any]?) async throws -> Data {
+    private func call(path: String, method: String, body: [String: Any]?,
+                      requireAuth: Bool = true) async throws -> Data {
         guard PaymentConfig.isConfigured, let url = URL(string: "\(PaymentConfig.functionsBaseURL)/\(path)") else {
             throw PaymentError.notConfigured
-        }
-        guard let token = try await Auth.auth().currentUser?.getIDToken() else {
-            throw PaymentError.notAuthenticated
         }
         var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue(PaymentConfig.anonKey, forHTTPHeaderField: "apikey")
-        request.setValue(token, forHTTPHeaderField: "x-firebase-token")
+        if requireAuth {
+            guard let token = try await Auth.auth().currentUser?.getIDToken() else {
+                throw PaymentError.notAuthenticated
+            }
+            request.setValue(token, forHTTPHeaderField: "x-firebase-token")
+        }
         request.setValue("application/json", forHTTPHeaderField: "content-type")
         if let body { request.httpBody = try JSONSerialization.data(withJSONObject: body) }
 

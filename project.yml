@@ -18,6 +18,9 @@ packages:
   lottie-spm:
     url: https://github.com/airbnb/lottie-spm.git
     majorVersion: 4.0.0
+  stripe-ios:
+    url: https://github.com/stripe/stripe-ios
+    majorVersion: 24.0.0
   SecurityKit:
     path: SecurityKit
 targets:
@@ -45,6 +48,14 @@ targets:
         product: GoogleSignInSwift
       - package: lottie-spm
         product: Lottie
+      - package: stripe-ios
+        product: StripePaymentSheet
+      - package: stripe-ios
+        product: StripePaymentsUI
+      - package: stripe-ios
+        product: StripePayments
+      - package: stripe-ios
+        product: StripeApplePay
       - package: SecurityKit
         product: SecurityKit
     settings:

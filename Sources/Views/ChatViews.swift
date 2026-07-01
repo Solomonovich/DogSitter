@@ -173,8 +173,11 @@ struct OwnerChatRowView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var chatReadStore: ChatReadStore
     @Environment(\.theme) private var theme
+    @EnvironmentObject var payments: PaymentService
     let wrapper: ChatWrapper
     @State private var showingApproveAlert = false
+    @State private var showingNeedCardAlert = false
+    @State private var triggerCapture = false
 
     private var isUnread: Bool { chatReadStore.isUnread(wrapper.chat, currentUserId: appState.currentUser?.id) }
 
@@ -230,13 +233,29 @@ struct OwnerChatRowView: View {
         .contentShape(Rectangle())
         .alert("אישור מטפל", isPresented: $showingApproveAlert) {
             Button("ביטול", role: .cancel) { }
-            Button("אשר") {
-                if let cid = wrapper.chat.id {
-                    Task { await appState.approveChat(chatId: cid, postId: wrapper.chat.postId) }
-                }
-            }
+            Button("אשר") { approveTapped() }
         } message: {
             Text("האם אתה בטוח שברצונך לאשר את המטפל?")
+        }
+        // Card-on-file gate: a real rail requires a saved card before approval. The
+        // server also re-verifies at charge time, so this is the UX layer.
+        .alert("דרוש אמצעי תשלום", isPresented: $showingNeedCardAlert) {
+            Button("הוסף כרטיס") { triggerCapture = true }
+            Button("ביטול", role: .cancel) { }
+        } message: {
+            Text("כדי לאשר מטפל יש להוסיף אמצעי תשלום. החיוב יתבצע רק לאחר השירות.")
+        }
+        // After a card is saved, the owner taps "אשר" again to approve.
+        .cardCapture(trigger: $triggerCapture)
+    }
+
+    private func approveTapped() {
+        Task {
+            if await payments.bookingBlockedByMissingCard() {
+                showingNeedCardAlert = true
+            } else if let cid = wrapper.chat.id {
+                await appState.approveChat(chatId: cid, postId: wrapper.chat.postId)
+            }
         }
     }
 }
