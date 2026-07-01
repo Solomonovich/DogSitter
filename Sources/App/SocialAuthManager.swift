@@ -248,76 +248,65 @@ class SocialAuthManager: NSObject, ObservableObject, ASAuthorizationControllerDe
 
 // Reusable Shared Social Buttons Component spanning LoginView & SignUpView
 struct SocialAuthButtonsView: View {
+    @Environment(\.theme) private var theme
     @StateObject private var socialManager = SocialAuthManager()
     @Binding var isLoading: Bool
-    
-    var body: some View {
-        VStack(spacing: 15) {
-            
-            if !socialManager.errorMessage.isEmpty {
-                Text(socialManager.errorMessage)
-                    .foregroundColor(.red)
-                    .font(.subheadline)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-            }
-            
 
-            
-            Button(action: { socialManager.startSignInWithAppleFlow() }) {
-                HStack {
-                    Image(systemName: "applelogo")
-                        .font(.title2)
-                        .padding(.leading, 10)
-                    Spacer()
-                    Text("התחבר עם Apple")
-                        .font(.headline)
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(Color.black)
-                .foregroundColor(.white)
-                .cornerRadius(15)
-            }
-            .padding(.horizontal, 30)
-            
-            HStack(spacing: 15) {
-                VStack { Divider().background(Color.gray.opacity(0.3)) }
-                Text("או")
-                    .foregroundColor(.secondary)
-                    .font(.subheadline)
-                VStack { Divider().background(Color.gray.opacity(0.3)) }
-            }
-            .padding(.horizontal, 40)
-            .padding(.vertical, 10)
-            
-            Button(action: { socialManager.signInWithGoogle() }) {
-                HStack {
-                    // Note: Use a generic icon if specific assets aren't bundled. The user requests a Google Logo, "g.circle.fill" does not exist in SF Symbols, so we use a text G.
-                    Text("G")
-                        .font(.title2.bold())
-                        .padding(.leading, 10)
-                    Spacer()
-                    Text("התחבר עם Google")
-                        .font(.headline)
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(Color.white)
-                .foregroundColor(.black)
-                .cornerRadius(15)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 15)
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+    var body: some View {
+        VStack(spacing: theme.spacing.md) {
+            divider
+
+            HStack(spacing: theme.spacing.sm) {
+                // Apple: background/foreground derive from tokens so the button stays
+                // legible (near-white on dark, near-black on light) without literals.
+                SocialLoginButton(
+                    label: "Apple",
+                    background: theme.color.textPrimary,
+                    foreground: theme.color.background,
+                    logo: {
+                        Image(systemName: "applelogo")
+                            .font(.system(size: 18, weight: .medium))
+                    },
+                    action: { socialManager.startSignInWithAppleFlow() }
+                )
+
+                SocialLoginButton(
+                    label: "Google",
+                    background: theme.color.surface,
+                    foreground: theme.color.textPrimary,
+                    border: theme.color.separator,
+                    logo: { GoogleGMark() },
+                    action: { socialManager.signInWithGoogle() }
                 )
             }
-            .padding(.horizontal, 30)
+
+            if !socialManager.errorMessage.isEmpty {
+                Text(socialManager.errorMessage)
+                    .foregroundStyle(theme.color.error)
+                    .font(theme.typography.subheadline)
+                    .multilineTextAlignment(.center)
+                    .transition(.opacity)
+            }
         }
         .onChange(of: socialManager.isProcessing) { isProcessing in
             isLoading = isProcessing
         }
         .environment(\.layoutDirection, .rightToLeft)
+    }
+
+    private var divider: some View {
+        HStack(spacing: theme.spacing.sm) {
+            line
+            Text("או")
+                .font(theme.typography.footnote)
+                .foregroundStyle(theme.color.textSecondary)
+            line
+        }
+    }
+
+    private var line: some View {
+        Rectangle()
+            .fill(theme.color.separator)
+            .frame(height: 1)
     }
 }

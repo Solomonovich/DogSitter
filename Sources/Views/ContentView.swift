@@ -67,21 +67,20 @@ struct ContactDetailsOnboardingView: View {
 
                 ScrollView {
                     VStack(spacing: theme.spacing.lg) {
-                        VStack(spacing: theme.spacing.xs) {
-                            Text("דוגסיטר")
-                                .font(theme.typography.display)
-                                .foregroundStyle(theme.color.accent)
-                                .shadow(color: theme.color.accent.opacity(0.3), radius: 5, x: 0, y: 5)
+                        VStack(spacing: theme.spacing.md) {
+                            BrandHeader()
 
-                            Text("פרטי יצירת קשר")
-                                .font(theme.typography.title2)
-                                .foregroundStyle(theme.color.textPrimary)
+                            VStack(spacing: theme.spacing.xs) {
+                                Text("פרטי יצירת קשר")
+                                    .font(theme.typography.title2)
+                                    .foregroundStyle(theme.color.textPrimary)
 
-                            Text("נצטרך את הפרטים האלו כדי לחבר אותך עם משתמשים אחרים")
-                                .font(theme.typography.callout)
-                                .foregroundStyle(theme.color.textSecondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal)
+                                Text("נצטרך את הפרטים האלו כדי לחבר אותך עם משתמשים אחרים")
+                                    .font(theme.typography.callout)
+                                    .foregroundStyle(theme.color.textSecondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal)
+                            }
                         }
                         .padding(.top, theme.spacing.xl)
 

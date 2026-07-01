@@ -20,11 +20,8 @@ struct SocialRoleSelectionView: View {
             BrandGradient()
 
             VStack(spacing: theme.spacing.xl) {
-                Text("דוגסיטר")
-                    .font(theme.typography.display)
-                    .foregroundStyle(theme.color.accent)
-                    .multilineTextAlignment(.center)
-                    .padding(.top, 50)
+                BrandHeader()
+                    .padding(.top, theme.spacing.xxl)
 
                 Text("איך תרצה להשתמש באפליקציה?")
                     .font(theme.typography.title2)
